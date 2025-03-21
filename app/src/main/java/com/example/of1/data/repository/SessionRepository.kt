@@ -10,7 +10,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
-import okhttp3.ResponseBody
 import retrofit2.HttpException
 import retrofit2.Response
 import java.io.IOException
@@ -46,17 +45,23 @@ class SessionRepository @Inject constructor(
 
         try {
             Log.d("SessionRepository", "Fetching from API...")
-            //Crucial Change to obtain the response
             val response = apiService.getSessions(countryName, sessionName, year)
 
-            // Log the raw response body *before* Moshi processing
-            val rawResponse = response.raw().body?.string()
-            Log.d("SessionRepository", "Raw JSON response: $rawResponse")
-
+            // --- Debugging Logs ---
+//            val rawBody = response.raw().body
+//            Log.d("SessionRepository", "Raw Response Body (before string()): ${rawBody}, isNull: ${rawBody == null}, Thread: ${Thread.currentThread().name}, HashCode: ${System.identityHashCode(rawBody)}")
+//
+//
+//            val rawResponseString = rawBody?.string() // Get raw response string
+//            Log.d("SessionRepository", "Raw JSON response: $rawResponseString, Thread: ${Thread.currentThread().name}, HashCode (after string()): ${System.identityHashCode(rawBody)}")
+//
+//
+//            Log.d("SessionRepository", "Response Body (before body()): ${response.body()}, isSuccessful: ${response.isSuccessful}, Thread: ${Thread.currentThread().name}, HashCode: ${System.identityHashCode(response.body())}")
 
             if (response.isSuccessful) {
-                val sessions = response.body() ?: emptyList() //This is where moshi is parsing
-                Log.d("SessionRepository", "API call successful: ${sessions.size} sessions")
+                val sessions = response.body() ?: emptyList() // Access response.body()
+//                Log.d("SessionRepository", "API call successful: ${sessions.size} sessions, Thread: ${Thread.currentThread().name}, HashCode (after body()): ${System.identityHashCode(response.body())}")
+
 
                 val sessionEntities = sessions.map { session ->
                     SessionEntity(
@@ -85,7 +90,6 @@ class SessionRepository @Inject constructor(
                 Log.d("SessionRepository", "Emitted Success from API")
 
             } else {
-                // Log the error, if any (already implemented, kept for completeness)
                 val errorBody = response.errorBody()?.string()
                 Log.e("SessionRepository", "API call failed: ${response.code()}, errorBody: $errorBody")
                 emit(Resource.Error("Error fetching sessions: ${response.code()} - $errorBody"))
@@ -104,18 +108,5 @@ class SessionRepository @Inject constructor(
         Log.e("SessionRepository", "Flow error", e)
         emit(Resource.Error("Unexpected error: ${e.localizedMessage ?: "Unknown error"}"))
         emit(Resource.Loading(false))
-    }
-
-    // Helper function to get the raw response body as a string (for logging)
-    private fun Response<*>.rawBodyString(): String? {
-        return try {
-            val source = this.raw().body?.source()
-            source?.request(Long.MAX_VALUE) // Buffer the entire body.
-            val buffer = source?.buffer
-            buffer?.clone()?.readUtf8()
-        } catch (e: IOException) {
-            Log.e("SessionRepository", "Error reading raw response body", e)
-            null
-        }
     }
 }

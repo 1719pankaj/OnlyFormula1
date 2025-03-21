@@ -21,5 +21,46 @@
         android:id="@+id/mainFrag"
         android:name="com.example.of1.ui.main.MainFragment"
         android:label="fragment_main"
-        tools:layout="@layout/fragment_main" />
+        tools:layout="@layout/fragment_main" >
+        <action
+            android:id="@+id/action_mainFrag_to_seasonsFragment"
+            app:destination="@id/seasonsFragment"
+            app:popUpTo="@id/mainFrag"
+            app:popUpToInclusive="true" />
+    </fragment>
+    <fragment
+        android:id="@+id/meetingsFragment"
+        android:name="com.example.of1.ui.meetings.MeetingsFragment"
+        android:label="fragment_meetings"
+        tools:layout="@layout/fragment_meetings" />
+    <fragment
+        android:id="@+id/seasonsFragment"
+        android:name="com.example.of1.ui.seasons.SeasonsFragment"
+        android:label="SeasonsFragment" >
+        <action
+            android:id="@+id/action_seasonsFragment_to_racesFragment"
+            app:destination="@id/racesFragment" />
+    </fragment>
+    <fragment
+        android:id="@+id/racesFragment"
+        android:name="com.example.of1.ui.races.RacesFragment"
+        android:label="RacesFragment" >
+        <argument
+            android:name="seasonYear"
+            app:argType="string" />
+        <action
+            android:id="@+id/actionRacesFragment_toResultsFragment"
+            app:destination="@id/resultsFragment" />
+    </fragment>
+    <fragment
+        android:id="@+id/resultsFragment"
+        android:name="com.example.of1.ui.results.ResultsFragment"
+        android:label="ResultsFragment" >
+        <argument
+            android:name="seasonYear"
+            app:argType="string" />
+        <argument
+            android:name="raceRound"
+            app:argType="string" />
+    </fragment>
 </navigation>

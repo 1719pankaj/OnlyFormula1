@@ -1,5 +1,6 @@
 package com.example.of1.data.remote
 
+import com.example.of1.data.model.Meeting
 import com.example.of1.data.model.Session
 import retrofit2.Response
 import retrofit2.http.GET
@@ -12,4 +13,7 @@ interface OpenF1ApiService {
         @Query("session_name", encoded = false) sessionName: String,
         @Query("year") year: Int
     ): Response<List<Session>>
+
+    @GET("meetings") // New endpoint for meetings
+    suspend fun getMeetings(@Query("year") year: Int): Response<List<Meeting>>
 }

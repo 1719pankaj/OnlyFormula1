@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
     id("com.google.devtools.ksp")
     id("com.google.dagger.hilt.android")
+    id("androidx.navigation.safeargs.kotlin")
 }
 
 android {
@@ -44,10 +45,11 @@ dependencies {
     implementation(libs.lottie)
     // Retrofit
     implementation(libs.retrofit)
-    implementation(libs.converter.moshi) //Moshy Converter
-    implementation(libs.moshi.kotlin)
+    implementation(libs.converter.gson)
+    implementation(libs.gson)
 
-    implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
+
+    implementation(libs.logging.interceptor)
 
 
     // Room

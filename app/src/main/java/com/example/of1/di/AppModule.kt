@@ -2,11 +2,18 @@ package com.example.of1.di
 
 import android.content.Context
 import com.example.of1.data.local.Of1Database
+import com.example.of1.data.local.dao.MeetingDao
+import com.example.of1.data.local.dao.RaceDao
+import com.example.of1.data.local.dao.ResultDao
+import com.example.of1.data.local.dao.SeasonDao
 import com.example.of1.data.local.dao.SessionDao
+import com.example.of1.data.remote.JolpicaApiService
 import com.example.of1.data.remote.OpenF1ApiService
+import com.example.of1.data.repository.MeetingRepository
+import com.example.of1.data.repository.RaceRepository
+import com.example.of1.data.repository.ResultRepository
+import com.example.of1.data.repository.SeasonRepository
 import com.example.of1.data.repository.SessionRepository
-import com.squareup.moshi.Moshi
-import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -15,18 +22,16 @@ import dagger.hilt.components.SingletonComponent
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
-import retrofit2.converter.moshi.MoshiConverterFactory
+import retrofit2.converter.gson.GsonConverterFactory
+import javax.inject.Qualifier
 import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
 object AppModule {
 
-    private const val BASE_URL = "https://api.openf1.org/v1/"
-
-    private val moshi = Moshi.Builder()
-        .add(KotlinJsonAdapterFactory())
-        .build()
+    private const val BASE_URL_OPENF1 = "https://api.openf1.org/v1/"
+    private  val BASE_URL_JOLPICA = "https://api.jolpi.ca/ergast/f1/"
 
     @Provides
     @Singleton
@@ -41,19 +46,37 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideRetrofit(okHttpClient: OkHttpClient): Retrofit { // Inject OkHttpClient
+    @OpenF1Retrofit // Custom qualifier
+    fun provideRetrofitOpenF1(okHttpClient: OkHttpClient): Retrofit { // Inject OkHttpClient
         return Retrofit.Builder()
-            .baseUrl(BASE_URL)
+            .baseUrl(BASE_URL_OPENF1)
             .client(okHttpClient) // Set the OkHttpClient
-            .addConverterFactory(MoshiConverterFactory.create(moshi))
+            .addConverterFactory(GsonConverterFactory.create()) // Use GsonConverterFactory
             .build()
     }
 
     @Provides
     @Singleton
-    fun provideOpenF1ApiService(retrofit: Retrofit): OpenF1ApiService {
+    fun provideOpenF1ApiService(@OpenF1Retrofit retrofit: Retrofit): OpenF1ApiService {
         return retrofit.create(OpenF1ApiService::class.java)
     }
+    @Provides
+    @Singleton
+    @JolpicaRetrofit // Custom qualifier
+    fun provideRetrofitJolpica(okHttpClient: OkHttpClient): Retrofit {
+        return Retrofit.Builder()
+            .baseUrl(BASE_URL_JOLPICA)
+            .client(okHttpClient)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+    }
+
+    @Provides
+    @Singleton
+    fun provideJolpicaApiService(@JolpicaRetrofit retrofit: Retrofit): JolpicaApiService {
+        return retrofit.create(JolpicaApiService::class.java)
+    }
+
 
     @Provides
     @Singleton
@@ -68,8 +91,64 @@ object AppModule {
     }
 
     @Provides
-    @Singleton
+    @Singleton // Repository should also be a singleton
     fun provideSessionRepository(apiService: OpenF1ApiService, sessionDao: SessionDao): SessionRepository {
         return SessionRepository(apiService, sessionDao)
     }
+
+    @Provides
+    @Singleton
+    fun provideMeetingDao(database: Of1Database): MeetingDao { // Add provideMeetingDao
+        return database.meetingDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideMeetingRepository(apiService: OpenF1ApiService, meetingDao: MeetingDao): MeetingRepository { // Add provideMeetingRepository
+        return MeetingRepository(apiService, meetingDao)
+    }
+    @Provides
+    @Singleton
+    fun provideSeasonDao(database: Of1Database): SeasonDao {
+        return database.seasonDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideSeasonRepository(apiService: JolpicaApiService, seasonDao: SeasonDao): SeasonRepository {
+        return SeasonRepository(apiService, seasonDao)
+    }
+    @Provides
+    @Singleton
+    fun provideRaceDao(database: Of1Database): RaceDao{
+        return database.raceDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideRaceRepository(apiService: JolpicaApiService, raceDao: RaceDao) : RaceRepository{
+        return RaceRepository(apiService, raceDao)
+    }
+
+    @Provides
+    @Singleton
+    fun provideResultDao(database: Of1Database): ResultDao {
+        return database.resultDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideResultRepository(apiService: JolpicaApiService, resultDao: ResultDao): ResultRepository {
+        return ResultRepository(apiService, resultDao)
+    }
 }
+
+// Custom qualifiers to distinguish between Retrofit instances
+@Qualifier
+@Retention(AnnotationRetention.BINARY)
+annotation class OpenF1Retrofit
+
+@Qualifier
+@Retention(AnnotationRetention.BINARY)
+annotation class JolpicaRetrofit
+
