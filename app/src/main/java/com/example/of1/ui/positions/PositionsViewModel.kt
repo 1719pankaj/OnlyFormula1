@@ -3,6 +3,8 @@ package com.example.of1.ui.positions
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.of1.data.model.Position
+import com.example.of1.data.model.openf1.OF1Driver
+import com.example.of1.data.repository.DriverRepository
 import com.example.of1.data.repository.PositionRepository
 import com.example.of1.utils.Constants
 import com.example.of1.utils.Resource
@@ -17,42 +19,47 @@ import javax.inject.Inject
 
 @HiltViewModel
 class PositionsViewModel @Inject constructor(
-    private val repository: PositionRepository
+    private val positionRepository: PositionRepository,
+    private val driverRepository: DriverRepository // Inject DriverRepository
 ) : ViewModel() {
 
     private val _positions = MutableStateFlow<Resource<List<Position>>>(Resource.Loading())
     val positions: StateFlow<Resource<List<Position>>> = _positions
 
-    private var pollingJob: kotlinx.coroutines.Job? = null // Keep track of the polling job
+    private val _drivers = MutableStateFlow<Resource<List<OF1Driver>>>(Resource.Loading()) //For drivers.
+    val drivers: StateFlow<Resource<List<OF1Driver>>> = _drivers
+
+    private var pollingJob: kotlinx.coroutines.Job? = null
 
     fun getPositions(meetingKey: Int, sessionKey: Int, isLive: Boolean) {
+
         viewModelScope.launch {
             if (isLive) {
-                startPolling(meetingKey, sessionKey) // Start polling only if isLive is true
+                startPolling(meetingKey, sessionKey)
             } else {
-                // If not live, just fetch once and don't start polling.
-                repository.getPositions(meetingKey, sessionKey)
+                positionRepository.getPositions(meetingKey, sessionKey)
                     .onEach { _positions.value = it }
                     .launchIn(viewModelScope)
             }
         }
-    }
-    private fun startPolling(meetingKey: Int, sessionKey: Int){
-        pollingJob?.cancel() // Cancel any existing polling job
-        pollingJob = viewModelScope.launch {
-            while (true){
-                repository.getPositions(meetingKey, sessionKey)
-                    .onEach {
-                        _positions.value = it
-                    }.launchIn(this)
-                delay(Constants.POLLING_RATE)
-            }
+
+        // Fetch Drivers -  This happens regardless of 'isLive'
+        viewModelScope.launch {
+            driverRepository.getDrivers(sessionKey, meetingKey)
+                .onEach { _drivers.value = it }
+                .launchIn(viewModelScope)
         }
     }
+
+    private fun startPolling(meetingKey: Int, sessionKey: Int) {
+        //...
+    }
+
     override fun onCleared() {
         super.onCleared()
-        pollingJob?.cancel() // VERY IMPORTANT: Cancel the polling when the ViewModel is cleared
+        pollingJob?.cancel()
     }
+
     fun stopPolling() {
         pollingJob?.cancel()
     }

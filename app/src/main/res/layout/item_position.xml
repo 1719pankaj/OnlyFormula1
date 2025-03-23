@@ -53,7 +53,7 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginTop="4dp"
-        app:layout_constraintEnd_toEndOf="@+id/tv_driver_name"
+        app:layout_constraintEnd_toStartOf="@+id/tv_country_code"
         app:layout_constraintStart_toStartOf="@+id/tv_driver_name"
         app:layout_constraintTop_toBottomOf="@+id/tv_driver_name"
         tools:text="Mercedes" />
@@ -62,8 +62,9 @@
         android:id="@+id/tv_country_code"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        app:layout_constraintBottom_toBottomOf="@+id/iv_headshot"
-        app:layout_constraintEnd_toEndOf="@+id/iv_headshot"
+        android:layout_marginEnd="8dp"
+        app:layout_constraintBottom_toBottomOf="@+id/tv_team_color"
+        app:layout_constraintEnd_toStartOf="@+id/tv_team_color"
         tools:text="GBR" />
 
     <View

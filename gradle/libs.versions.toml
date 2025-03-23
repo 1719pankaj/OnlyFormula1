@@ -2,6 +2,7 @@
 agp = "8.9.0"
 coil = "2.6.0"
 converterMoshi = "2.9.0"
+glide = "4.16.0"
 gson = "2.10.1"
 hiltAndroid = "2.50"
 kotlin = "2.0.21"
@@ -33,6 +34,7 @@ androidx-room-runtime = { module = "androidx.room:room-runtime", version.ref = "
 coil = { module = "io.coil-kt:coil", version.ref = "coil" }
 converter-gson = { module = "com.squareup.retrofit2:converter-gson", version.ref = "converterMoshi" }
 converter-moshi = { module = "com.squareup.retrofit2:converter-moshi", version.ref = "converterMoshi" }
+glide = { module = "com.github.bumptech.glide:glide", version.ref = "glide" }
 gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
 hilt-android = { module = "com.google.dagger:hilt-android", version.ref = "hiltAndroid" }
 hilt-android-compiler = { module = "com.google.dagger:hilt-android-compiler", version.ref = "hiltAndroid" }

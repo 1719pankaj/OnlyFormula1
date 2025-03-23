@@ -49,8 +49,8 @@ dependencies {
     implementation(libs.gson)
     implementation(libs.logging.interceptor)
 
-    //Coil
-    implementation(libs.coil)
+    //Glide
+    implementation(libs.glide)
 
     // Room
     implementation(libs.androidx.room.runtime)
