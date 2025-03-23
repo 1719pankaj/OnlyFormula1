@@ -11,6 +11,7 @@ import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.of1.databinding.FragmentPositionsBinding
@@ -50,6 +51,17 @@ class PositionsFragment : Fragment() {
 
     private fun setupRecyclerView() {
         positionAdapter = PositionListAdapter() //Updated adapter
+        positionAdapter.onPositionClick = { uiPosition ->
+            // Navigate to LapsFragment, passing driverNumber, meetingKey, and sessionKey
+            val action = PositionsFragmentDirections.actionPositionsFragmentToLapsFragment(
+                driverNumber = uiPosition.position.driverNumber,
+                meetingKey = uiPosition.position.meetingKey,
+                sessionKey = uiPosition.position.sessionKey,
+                isLive = args.isLive // Pass the isLive flag from PositionsFragment
+            )
+            findNavController().navigate(action)
+
+        }
         binding.recyclerView.apply {
             layoutManager = LinearLayoutManager(context)
             adapter = positionAdapter

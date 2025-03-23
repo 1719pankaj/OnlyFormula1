@@ -2,6 +2,7 @@ package com.example.of1.data.remote
 
 import com.example.of1.data.model.Meeting
 import com.example.of1.data.model.openf1.OF1DriverResponse
+import com.example.of1.data.model.openf1.OpenF1LapResponse
 import com.example.of1.data.model.openf1.OpenF1PositionResponse
 import com.example.of1.data.model.openf1.OpenF1SessionResponse
 
@@ -41,5 +42,12 @@ interface OpenF1ApiService {
     suspend fun getDrivers(
         @Query("session_key") sessionKey: Int // Only session_key is needed
     ): Response<List<OF1DriverResponse>>
+
+    @GET("laps")
+    suspend fun getLaps(
+        @Query("session_key") sessionKey: Int,
+        @Query("driver_number") driverNumber: Int,
+        @Query("lap_number>") lapNumber: Int? = null // Optional for updates
+    ): Response<List<OpenF1LapResponse>>
 
 }

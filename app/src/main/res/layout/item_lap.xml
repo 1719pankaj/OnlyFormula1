@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:padding="8dp">
+
+    <TextView
+        android:id="@+id/tv_lap_number"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textStyle="bold"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:text="Lap 1" />
+
+    <TextView
+        android:id="@+id/tv_lap_time"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        app:layout_constraintBaseline_toBaselineOf="@+id/tv_lap_number"
+        app:layout_constraintStart_toEndOf="@+id/tv_lap_number"
+        tools:text="1:30.123" />
+
+    <TextView
+        android:id="@+id/tv_sector_1"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/tv_lap_number"
+        tools:text="S1: 25.591" />
+
+    <TextView
+        android:id="@+id/tv_sector_2"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        app:layout_constraintBaseline_toBaselineOf="@+id/tv_sector_1"
+        app:layout_constraintStart_toEndOf="@+id/tv_sector_1"
+        tools:text="S2: 28.731" />
+
+    <TextView
+        android:id="@+id/tv_sector_3"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        app:layout_constraintBaseline_toBaselineOf="@+id/tv_sector_2"
+        app:layout_constraintStart_toEndOf="@+id/tv_sector_2"
+        tools:text="S3: 41.077" />
+    <TextView
+        android:id="@+id/tv_driver_number"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        app:layout_constraintBaseline_toBaselineOf="@+id/tv_sector_3"
+        app:layout_constraintStart_toEndOf="@+id/tv_sector_3"
+        tools:text="#44" />
+
+    <TextView
+        android:id="@+id/tv_i1_speed"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/tv_sector_1"
+        tools:text="I1: 280" />
+
+    <TextView
+        android:id="@+id/tv_i2_speed"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        app:layout_constraintBaseline_toBaselineOf="@+id/tv_i1_speed"
+        app:layout_constraintStart_toEndOf="@+id/tv_i1_speed"
+        tools:text="I2: 275" />
+
+    <TextView
+        android:id="@+id/tv_st_speed"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        app:layout_constraintBaseline_toBaselineOf="@+id/tv_i2_speed"
+        app:layout_constraintStart_toEndOf="@+id/tv_i2_speed"
+        tools:text="ST: 312" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

@@ -23,6 +23,7 @@ data class UiPosition(
 class PositionListAdapter : ListAdapter<UiPosition, PositionListAdapter.PositionViewHolder>(PositionDiffCallback()) {
 
     private var drivers: List<OF1Driver> = emptyList()
+    var onPositionClick: ((UiPosition) -> Unit)? = null // Click listener
 
     // Update the drivers.  This will trigger a diff calculation.
     fun setDrivers(newDrivers: List<OF1Driver>) {
@@ -54,7 +55,8 @@ class PositionListAdapter : ListAdapter<UiPosition, PositionListAdapter.Position
 
     override fun onBindViewHolder(holder: PositionViewHolder, position: Int) {
         val uiPosition = getItem(position)
-        holder.bind(uiPosition)  // Pass the UiPosition object
+        holder.bind(uiPosition)
+        holder.itemView.setOnClickListener { onPositionClick?.invoke(uiPosition) } // Set click listener
     }
 
     class PositionViewHolder(private val binding: ItemPositionBinding) : RecyclerView.ViewHolder(binding.root) {
