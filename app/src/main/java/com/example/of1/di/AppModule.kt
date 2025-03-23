@@ -3,6 +3,7 @@ package com.example.of1.di
 import android.content.Context
 import com.example.of1.data.local.Of1Database
 import com.example.of1.data.local.dao.MeetingDao
+import com.example.of1.data.local.dao.PositionDao
 import com.example.of1.data.local.dao.RaceDao
 import com.example.of1.data.local.dao.ResultDao
 import com.example.of1.data.local.dao.SeasonDao
@@ -10,6 +11,7 @@ import com.example.of1.data.local.dao.SessionDao
 import com.example.of1.data.remote.JolpicaApiService
 import com.example.of1.data.remote.OpenF1ApiService
 import com.example.of1.data.repository.MeetingRepository
+import com.example.of1.data.repository.PositionRepository
 import com.example.of1.data.repository.RaceRepository
 import com.example.of1.data.repository.ResultRepository
 import com.example.of1.data.repository.SeasonRepository
@@ -140,6 +142,18 @@ object AppModule {
     @Singleton
     fun provideResultRepository(apiService: JolpicaApiService, resultDao: ResultDao): ResultRepository {
         return ResultRepository(apiService, resultDao)
+    }
+
+    @Provides
+    @Singleton
+    fun providePositionDao(database: Of1Database): PositionDao {
+        return database.positionDao()
+    }
+
+    @Provides
+    @Singleton
+    fun providePositionRepository(apiService: OpenF1ApiService, positionDao: PositionDao): PositionRepository {
+        return PositionRepository(apiService, positionDao)
     }
 }
 

@@ -1,20 +1,19 @@
 package com.example.of1.data.model
 
-import com.google.gson.annotations.SerializedName
-
+//Making some parameters nullable to accommodate for both apis.
 data class Session(
-    @SerializedName("circuit_key") val circuitKey: Int,
-    @SerializedName("circuit_short_name") val circuitShortName: String,
-    @SerializedName("country_code") val countryCode: String,
-    @SerializedName("country_key") val countryKey: Int,
-    @SerializedName("country_name") val countryName: String,
-    @SerializedName("date_end") val dateEnd: String,
-    @SerializedName("date_start") val dateStart: String,
-    @SerializedName("gmt_offset") val gmtOffset: String,
-    val location: String,
-    @SerializedName("meeting_key") val meetingKey: Int,
-    @SerializedName("session_key") val sessionKey: Int,
-    @SerializedName("session_name") val sessionName: String,
-    @SerializedName("session_type") val sessionType: String,
-    val year: Int
+    val circuitKey: Int?,
+    val circuitShortName: String?,
+    val countryCode: String?,
+    val countryKey: Int?,
+    val countryName: String?,
+    val dateEnd: String?,
+    val dateStart: String?,
+    val gmtOffset: String?,
+    val location: String?,
+    val meetingKey: Int,
+    val sessionKey: Int,
+    val sessionName: String,
+    val sessionType: String?,
+    val year: Int?
 )

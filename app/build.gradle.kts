@@ -47,10 +47,10 @@ dependencies {
     implementation(libs.retrofit)
     implementation(libs.converter.gson)
     implementation(libs.gson)
-
-
     implementation(libs.logging.interceptor)
 
+    //Coil
+    implementation(libs.coil)
 
     // Room
     implementation(libs.androidx.room.runtime)

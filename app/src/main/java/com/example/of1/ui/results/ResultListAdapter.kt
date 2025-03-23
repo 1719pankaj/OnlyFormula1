@@ -1,5 +1,6 @@
 package com.example.of1.ui.results
 
+import android.annotation.SuppressLint
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
@@ -21,11 +22,12 @@ class ResultListAdapter : ListAdapter<Result, ResultListAdapter.ResultViewHolder
     }
 
     class ResultViewHolder(private val binding: ItemResultBinding) : RecyclerView.ViewHolder(binding.root) {
+        @SuppressLint("SetTextI18n")
         fun bind(result: Result) {
             binding.tvDriverName.text = "${result.driver.givenName} ${result.driver.familyName}"
             binding.tvConstructorName.text = result.constructor.name
-            binding.tvDriverNumber.text = result.driverNumber
-            binding.tvPosition.text = result.position
+            binding.tvDriverNumber.text = "#${result.driverNumber}"
+            binding.tvPosition.text = "P${result.position}"
             binding.tvFastestLapTime.text = result.fastestLap?.time?.time ?: "N/A" // Handle potential null
             binding.tvPoints.text = result.points
         }

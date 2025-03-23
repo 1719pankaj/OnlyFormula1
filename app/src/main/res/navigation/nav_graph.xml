@@ -49,8 +49,8 @@
             android:name="seasonYear"
             app:argType="string" />
         <action
-            android:id="@+id/actionRacesFragment_toResultsFragment"
-            app:destination="@id/resultsFragment" />
+            android:id="@+id/actionRacesFragment_toSessionsFragment"
+            app:destination="@id/sessionsFragment" />
     </fragment>
     <fragment
         android:id="@+id/resultsFragment"
@@ -62,5 +62,30 @@
         <argument
             android:name="raceRound"
             app:argType="string" />
+    </fragment>
+    <fragment
+        android:id="@+id/sessionsFragment"
+        android:name="com.example.of1.ui.sessions.SessionsFragment"
+        android:label="SessionsFragment" >
+        <argument
+            android:name="meetingKey"
+            app:argType="integer" />
+        <action
+            android:id="@+id/actionSessionsFragment_toPositionsFragment"
+            app:destination="@id/positionsFragment" />
+    </fragment>
+    <fragment
+        android:id="@+id/positionsFragment"
+        android:name="com.example.of1.ui.positions.PositionsFragment"
+        android:label="PositionsFragment" >
+        <argument
+            android:name="meetingKey"
+            app:argType="integer" />
+        <argument
+            android:name="sessionKey"
+            app:argType="integer" />
+        <argument
+            android:name="isLive"
+            app:argType="boolean" />
     </fragment>
 </navigation>

@@ -5,17 +5,19 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import com.example.of1.data.local.dao.MeetingDao
+import com.example.of1.data.local.dao.PositionDao
 import com.example.of1.data.local.dao.RaceDao
 import com.example.of1.data.local.dao.ResultDao
 import com.example.of1.data.local.dao.SeasonDao
 import com.example.of1.data.local.dao.SessionDao
 import com.example.of1.data.local.entity.MeetingEntity
+import com.example.of1.data.local.entity.PositionEntity
 import com.example.of1.data.local.entity.RaceEntity
 import com.example.of1.data.local.entity.ResultEntity
 import com.example.of1.data.local.entity.SeasonEntity
 import com.example.of1.data.local.entity.SessionEntity
 
-@Database(entities = [SessionEntity::class, MeetingEntity::class, SeasonEntity::class, RaceEntity::class, ResultEntity::class], version = 4, exportSchema = false) // Add entities, update version
+@Database(entities = [SessionEntity::class, MeetingEntity::class, SeasonEntity::class, RaceEntity::class, ResultEntity::class, PositionEntity::class], version = 6, exportSchema = false) // Add entities, update version
 abstract class Of1Database : RoomDatabase() {
 
     abstract fun sessionDao(): SessionDao
@@ -23,6 +25,8 @@ abstract class Of1Database : RoomDatabase() {
     abstract fun seasonDao(): SeasonDao
     abstract fun raceDao(): RaceDao
     abstract fun resultDao(): ResultDao // Add resultDao
+
+    abstract fun positionDao(): PositionDao
 
     companion object {
         @Volatile
