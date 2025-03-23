@@ -2,6 +2,7 @@ package com.example.of1.di
 
 import android.content.Context
 import com.example.of1.data.local.Of1Database
+import com.example.of1.data.local.dao.CarDataDao
 import com.example.of1.data.local.dao.DriverDao
 import com.example.of1.data.local.dao.LapDao
 import com.example.of1.data.local.dao.MeetingDao
@@ -12,6 +13,7 @@ import com.example.of1.data.local.dao.SeasonDao
 import com.example.of1.data.local.dao.SessionDao
 import com.example.of1.data.remote.JolpicaApiService
 import com.example.of1.data.remote.OpenF1ApiService
+import com.example.of1.data.repository.CarDataRepository
 import com.example.of1.data.repository.DriverRepository
 import com.example.of1.data.repository.LapRepository
 import com.example.of1.data.repository.MeetingRepository
@@ -182,6 +184,18 @@ object AppModule {
     @Singleton
     fun provideLapRepository(apiService: OpenF1ApiService, lapDao: LapDao): LapRepository {
         return LapRepository(apiService, lapDao)
+    }
+
+    @Provides
+    @Singleton
+    fun provideCarDataDao(database: Of1Database): CarDataDao {
+        return database.carDataDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideCarDataRepository(apiService: OpenF1ApiService, carDataDao: CarDataDao): CarDataRepository {
+        return CarDataRepository(apiService, carDataDao)
     }
 }
 

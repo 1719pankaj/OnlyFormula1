@@ -5,11 +5,12 @@ import androidx.room.PrimaryKey
 import androidx.room.TypeConverters
 import com.example.of1.utils.IntListConverter
 
-@Entity(tableName = "laps")
+@Entity(tableName = "laps",
+    primaryKeys = ["sessionKey", "driverNumber", "lapNumber"] // Composite primary key
+)
 @TypeConverters(IntListConverter::class)
 data class LapEntity(
-    @PrimaryKey(autoGenerate = true) //AutoIncrement
-    val id: Long = 0, // Use a unique ID, auto-generated
+    // No more auto-generated 'id'.  The primary key is now the combination below.
     val meetingKey: Int,
     val sessionKey: Int,
     val driverNumber: Int,
@@ -22,9 +23,9 @@ data class LapEntity(
     val durationSector1: Double?,
     val durationSector2: Double?,
     val durationSector3: Double?,
-    val lapNumber: Int,
-    val segmentsSector1: List<Int>?, //for segments
-    val segmentsSector2: List<Int>?, //for segments
-    val segmentsSector3: List<Int>?, //for segments
-    val lastUpdate: Long // Timestamp of the last update for this lap
+    val lapNumber: Int,  // Part of the primary key
+    val segmentsSector1: List<Int>?,
+    val segmentsSector2: List<Int>?,
+    val segmentsSector3: List<Int>?,
+    val lastUpdate: Long // Keep this for potential future use (though not part of the key)
 )

@@ -51,8 +51,17 @@ class PositionsViewModel @Inject constructor(
         }
     }
 
-    private fun startPolling(meetingKey: Int, sessionKey: Int) {
-        //...
+    private fun startPolling(meetingKey: Int, sessionKey: Int){
+        pollingJob?.cancel() // Cancel any existing polling job
+        pollingJob = viewModelScope.launch {
+            while (true){
+                delay(Constants.POLLING_RATE) //delay first.
+                positionRepository.getPositions(meetingKey, sessionKey) //Fetch data.
+                    .onEach {
+                        _positions.value = it
+                    }.launchIn(this)
+            }
+        }
     }
 
     override fun onCleared() {

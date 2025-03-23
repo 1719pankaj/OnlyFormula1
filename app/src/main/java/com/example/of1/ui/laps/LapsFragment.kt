@@ -11,6 +11,7 @@ import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.of1.databinding.FragmentLapsBinding
@@ -43,6 +44,16 @@ class LapsFragment : Fragment() {
         val isLive = args.isLive
 
         viewModel.getLaps(sessionKey, driverNumber, isLive) // Pass isLive
+
+        binding.btnCarData.setOnClickListener {  // Add car data click listener
+            val action = LapsFragmentDirections.actionLapsFragmentToCarDataFragment(
+                driverNumber = args.driverNumber,
+                meetingKey = args.meetingKey,
+                sessionKey = args.sessionKey,
+                isLive = args.isLive
+            )
+            findNavController().navigate(action)
+        }
     }
 
     private fun setupRecyclerView() {

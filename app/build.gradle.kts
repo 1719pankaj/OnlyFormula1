@@ -57,6 +57,8 @@ dependencies {
     ksp(libs.androidx.room.compiler)
     implementation(libs.androidx.room.ktx)
 
+    //Graphing
+    implementation("com.github.PhilJay:MPAndroidChart:v3.1.0")
 
     // Hilt
     implementation(libs.hilt.android)

@@ -2,6 +2,7 @@ package com.example.of1.data.remote
 
 import com.example.of1.data.model.Meeting
 import com.example.of1.data.model.openf1.OF1DriverResponse
+import com.example.of1.data.model.openf1.OpenF1CarDataResponse
 import com.example.of1.data.model.openf1.OpenF1LapResponse
 import com.example.of1.data.model.openf1.OpenF1PositionResponse
 import com.example.of1.data.model.openf1.OpenF1SessionResponse
@@ -35,7 +36,7 @@ interface OpenF1ApiService {
     suspend fun getPositions(
         @Query("meeting_key") meetingKey: Int,
         @Query("session_key") sessionKey: Int,
-        @Query("date") date: String? = null // Optional date for polling
+        @Query("date>", encoded = false) date: String? = null // Add >= and encoded = false
     ): Response<List<OpenF1PositionResponse>>
 
     @GET("drivers")
@@ -49,5 +50,12 @@ interface OpenF1ApiService {
         @Query("driver_number") driverNumber: Int,
         @Query("lap_number>") lapNumber: Int? = null // Optional for updates
     ): Response<List<OpenF1LapResponse>>
+
+    @GET("car_data")
+    suspend fun getCarData(
+        @Query("driver_number") driverNumber: Int,
+        @Query("session_key") sessionKey: Int,
+        @Query("date>=", encoded = false) date: String? = null // Optional date for updates
+    ): Response<List<OpenF1CarDataResponse>>
 
 }

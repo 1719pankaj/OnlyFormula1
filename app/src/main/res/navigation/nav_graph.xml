@@ -108,5 +108,25 @@
         <argument
             android:name="isLive"
             app:argType="boolean" />
+        <action
+            android:id="@+id/action_lapsFragment_to_carDataFragment"
+            app:destination="@id/carDataFragment" />
+    </fragment>
+    <fragment
+        android:id="@+id/carDataFragment"
+        android:name="com.example.of1.ui.cardata.CarDataFragment"
+        android:label="CarDataFragment" >
+        <argument
+            android:name="driverNumber"
+            app:argType="integer" />
+        <argument
+            android:name="meetingKey"
+            app:argType="integer" />
+        <argument
+            android:name="sessionKey"
+            app:argType="integer" />
+        <argument
+            android:name="isLive"
+            app:argType="boolean" />
     </fragment>
 </navigation>
