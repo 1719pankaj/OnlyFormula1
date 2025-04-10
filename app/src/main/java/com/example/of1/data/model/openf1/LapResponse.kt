@@ -33,5 +33,6 @@ data class Lap( //Common model
     val stSpeed: Int?,
     val segmentsSector1: List<Int>?,
     val segmentsSector2: List<Int>?,
-    val segmentsSector3: List<Int>?
+    val segmentsSector3: List<Int>?,
+    val dateStart: String? // ADD THIS.  Make it nullable.
 )

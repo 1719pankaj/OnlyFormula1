@@ -17,4 +17,7 @@ interface CarDataDao {
 
     @Query("SELECT MAX(date) FROM car_data WHERE sessionKey = :sessionKey AND driverNumber = :driverNumber") // Get Latest
     suspend fun getLatestCarDataTimestamp(sessionKey: Int, driverNumber: Int): String?
+
+    @Query("SELECT * FROM car_data WHERE sessionKey = :sessionKey AND driverNumber = :driverNumber AND date >= :startDate AND date <= :endDate ORDER BY date DESC")
+    fun getCarDataBySessionAndDriverAndDateRange(sessionKey: Int, driverNumber: Int, startDate: String, endDate: String): Flow<List<CarDataEntity>>
 }

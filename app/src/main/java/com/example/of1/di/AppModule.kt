@@ -6,6 +6,7 @@ import com.example.of1.data.local.dao.CarDataDao
 import com.example.of1.data.local.dao.DriverDao
 import com.example.of1.data.local.dao.LapDao
 import com.example.of1.data.local.dao.MeetingDao
+import com.example.of1.data.local.dao.PitStopDao
 import com.example.of1.data.local.dao.PositionDao
 import com.example.of1.data.local.dao.RaceDao
 import com.example.of1.data.local.dao.ResultDao
@@ -17,18 +18,19 @@ import com.example.of1.data.repository.CarDataRepository
 import com.example.of1.data.repository.DriverRepository
 import com.example.of1.data.repository.LapRepository
 import com.example.of1.data.repository.MeetingRepository
+import com.example.of1.data.repository.PitStopRepository
 import com.example.of1.data.repository.PositionRepository
 import com.example.of1.data.repository.RaceRepository
 import com.example.of1.data.repository.ResultRepository
 import com.example.of1.data.repository.SeasonRepository
 import com.example.of1.data.repository.SessionRepository
+import com.example.of1.utils.LimitedBodyLoggingInterceptor
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import okhttp3.OkHttpClient
-import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import javax.inject.Qualifier
@@ -44,11 +46,11 @@ object AppModule {
     @Provides
     @Singleton
     fun provideOkHttpClient(): OkHttpClient {
-        val loggingInterceptor = HttpLoggingInterceptor().apply {
-            level = HttpLoggingInterceptor.Level.BODY // Log everything: headers, body, etc.
-        }
+//        val loggingInterceptor = HttpLoggingInterceptor().apply {
+//            level = HttpLoggingInterceptor.Level.BODY // Log everything: headers, body, etc.
+//        }
         return OkHttpClient.Builder()
-            .addInterceptor(loggingInterceptor) // Add the interceptor
+            .addInterceptor(LimitedBodyLoggingInterceptor()) // Add the interceptor
             .build()
     }
 
@@ -101,7 +103,7 @@ object AppModule {
     @Provides
     @Singleton // Repository should also be a singleton
     fun provideSessionRepository(apiService: OpenF1ApiService, sessionDao: SessionDao): SessionRepository {
-        return SessionRepository(apiService, sessionDao)
+        return SessionRepository(apiService)
     }
 
     @Provides
@@ -196,6 +198,18 @@ object AppModule {
     @Singleton
     fun provideCarDataRepository(apiService: OpenF1ApiService, carDataDao: CarDataDao): CarDataRepository {
         return CarDataRepository(apiService, carDataDao)
+    }
+
+    @Provides
+    @Singleton
+    fun providePitStopDao(database: Of1Database): PitStopDao {
+        return database.pitStopDao()
+    }
+
+    @Provides
+    @Singleton
+    fun providePitStopRepository(apiService: OpenF1ApiService, pitStopDao: PitStopDao): PitStopRepository {
+        return PitStopRepository(apiService, pitStopDao)
     }
 }
 

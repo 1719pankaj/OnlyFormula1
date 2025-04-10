@@ -5,6 +5,7 @@ import androidx.room.PrimaryKey
 import androidx.room.TypeConverters
 import com.example.of1.utils.IntListConverter
 
+// data/local/entity/LapEntity.kt
 @Entity(tableName = "laps",
     primaryKeys = ["sessionKey", "driverNumber", "lapNumber"] // Composite primary key
 )
@@ -17,7 +18,7 @@ data class LapEntity(
     val i1Speed: Int?,
     val i2Speed: Int?,
     val stSpeed: Int?,
-    val dateStart: String?,
+    val dateStart: String?,  // ADD THIS.  Make it nullable.
     val lapDuration: Double?,
     val isPitOutLap: Boolean?,
     val durationSector1: Double?,

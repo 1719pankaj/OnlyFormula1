@@ -25,10 +25,9 @@ class PositionsFragment : Fragment() {
 
     private lateinit var binding: FragmentPositionsBinding
     private val viewModel: PositionsViewModel by viewModels()
-    private lateinit var positionAdapter: PositionListAdapter //Will be updated
+    private lateinit var positionAdapter: PositionListAdapter
     private val args: PositionsFragmentArgs by navArgs()
 
-    // ... (onCreateView, onViewCreated, setupRecyclerView - will be modified) ...
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         binding = FragmentPositionsBinding.inflate(inflater, container, false)
         return binding.root
@@ -39,15 +38,31 @@ class PositionsFragment : Fragment() {
 
         setupRecyclerView()
         observePositions()
-        observeDrivers() // Observe drivers
+        observeDrivers()
 
-        // Get season and round from navigation arguments
+        // Get arguments
         val meetingKey = args.meetingKey
         val sessionKey = args.sessionKey
         val isLive = args.isLive
-        viewModel.getPositions(meetingKey, sessionKey, isLive) // Fetch results and pass isLive
 
+        // Initial data fetch (always)
+        viewModel.getPositions(meetingKey, sessionKey, isLive)
+
+        // Start polling only if isLive is true.  Do this in onResume.
     }
+
+    override fun onResume() {
+        super.onResume()
+        if (args.isLive) {
+            viewModel.startPolling() // Start polling in onResume
+        }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        viewModel.stopPolling() // Stop polling in onPause
+    }
+
 
     private fun setupRecyclerView() {
         positionAdapter = PositionListAdapter() //Updated adapter

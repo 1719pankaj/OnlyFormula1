@@ -49,7 +49,7 @@
         android:layout_marginStart="8dp"
         app:layout_constraintBaseline_toBaselineOf="@+id/tv_sector_2"
         app:layout_constraintStart_toEndOf="@+id/tv_sector_2"
-        tools:text="S3: 41.077" />
+        tools:text="S3: 41.109" />
     <TextView
         android:id="@+id/tv_driver_number"
         android:layout_width="wrap_content"
@@ -85,5 +85,37 @@
         app:layout_constraintBaseline_toBaselineOf="@+id/tv_i2_speed"
         app:layout_constraintStart_toEndOf="@+id/tv_i2_speed"
         tools:text="ST: 312" />
+
+    <Button
+        android:id="@+id/btn_car_data"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Car Data"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <ImageView
+        android:id="@+id/iv_pit_stop_icon"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:src="@drawable/ic_garage"
+        android:layout_marginTop="4dp"
+        android:visibility="gone"
+        tools:visibility="visible"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/tv_i1_speed"
+        android:contentDescription="Pit Stop" />
+
+    <TextView
+        android:id="@+id/tv_pit_time"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="@+id/iv_pit_stop_icon"
+        app:layout_constraintStart_toEndOf="@+id/iv_pit_stop_icon"
+        app:layout_constraintTop_toTopOf="@+id/iv_pit_stop_icon"
+        tools:text="Pit: 22.3s"
+        tools:visibility="visible" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

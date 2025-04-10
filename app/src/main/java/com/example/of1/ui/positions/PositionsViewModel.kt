@@ -20,56 +20,63 @@ import javax.inject.Inject
 @HiltViewModel
 class PositionsViewModel @Inject constructor(
     private val positionRepository: PositionRepository,
-    private val driverRepository: DriverRepository // Inject DriverRepository
+    private val driverRepository: DriverRepository
 ) : ViewModel() {
 
     private val _positions = MutableStateFlow<Resource<List<Position>>>(Resource.Loading())
     val positions: StateFlow<Resource<List<Position>>> = _positions
 
-    private val _drivers = MutableStateFlow<Resource<List<OF1Driver>>>(Resource.Loading()) //For drivers.
+    private val _drivers = MutableStateFlow<Resource<List<OF1Driver>>>(Resource.Loading())
     val drivers: StateFlow<Resource<List<OF1Driver>>> = _drivers
 
     private var pollingJob: kotlinx.coroutines.Job? = null
+    private var isLive = false // Add isLive property
+    private var currentSessionKey: Int = -1 // Add, initialize to an invalid value
+    private var currentMeetingKey: Int = -1
 
+
+    // Modified getPositions:  Takes isLive as a parameter, but doesn't start polling immediately
     fun getPositions(meetingKey: Int, sessionKey: Int, isLive: Boolean) {
-
+        this.isLive = isLive // Store isLive
+        this.currentSessionKey = sessionKey //store
+        this.currentMeetingKey = meetingKey
         viewModelScope.launch {
-            if (isLive) {
-                startPolling(meetingKey, sessionKey)
-            } else {
-                positionRepository.getPositions(meetingKey, sessionKey)
-                    .onEach { _positions.value = it }
-                    .launchIn(viewModelScope)
-            }
+            positionRepository.getPositions(meetingKey, sessionKey)
+                .onEach { _positions.value = it }
+                .launchIn(viewModelScope)
         }
-
-        // Fetch Drivers -  This happens regardless of 'isLive'
+        // Fetch Drivers.
         viewModelScope.launch {
             driverRepository.getDrivers(sessionKey, meetingKey)
-                .onEach { _drivers.value = it }
+                .onEach {  _drivers.value = it }
                 .launchIn(viewModelScope)
         }
     }
 
-    private fun startPolling(meetingKey: Int, sessionKey: Int){
-        pollingJob?.cancel() // Cancel any existing polling job
-        pollingJob = viewModelScope.launch {
-            while (true){
-                delay(Constants.POLLING_RATE) //delay first.
-                positionRepository.getPositions(meetingKey, sessionKey) //Fetch data.
-                    .onEach {
-                        _positions.value = it
-                    }.launchIn(this)
+    // Call startPolling *separately* from getPositions.
+    fun startPolling() {
+        if (isLive && currentSessionKey != -1 && currentMeetingKey !=-1) { // Only start if isLive is true, and we have valid session Key.
+            pollingJob?.cancel() // Cancel any existing polling job
+            pollingJob = viewModelScope.launch {
+                while (true) {
+                    delay(Constants.POLLING_RATE)
+                    positionRepository.getPositions(currentMeetingKey, currentSessionKey)
+                        .onEach { _positions.value = it }
+                        .launchIn(this) // Important: Use 'this' (coroutine scope)
+                }
             }
         }
     }
 
-    override fun onCleared() {
-        super.onCleared()
-        pollingJob?.cancel()
-    }
 
     fun stopPolling() {
         pollingJob?.cancel()
+        pollingJob = null // Set to null after canceling
     }
+
+    override fun onCleared() {
+        super.onCleared()
+        stopPolling() // VERY IMPORTANT. Cancel when ViewModel is cleared
+    }
+
 }

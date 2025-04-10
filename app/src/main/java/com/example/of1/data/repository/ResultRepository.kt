@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import retrofit2.HttpException
+import kotlinx.coroutines.flow.onStart
 import java.io.IOException
 import javax.inject.Inject
 
@@ -28,32 +29,55 @@ class ResultRepository @Inject constructor(
     fun getResults(season: String, round: String): Flow<Resource<List<Result>>> = flow {
         emit(Resource.Loading())
         Log.d("ResultRepository", "Initial Loading emitted")
-        // Fetch from the local database first.
-        val localResults = resultDao.getResultsByRace(season, round).first()
-        if (localResults.isNotEmpty()) {
-            Log.d("ResultRepository", "Database returned data: ${localResults.size} items")
-            val results = localResults.map { entity ->
-                // Map from your ResultEntity to your Result data class
-                Result(
-                    entity.driverNumber,
-                    entity.position,
-                    entity.positionText,
-                    entity.points,
-                    Driver(entity.driverId, entity.driverPermanentNumber, entity.driverCode, entity.driverUrl, entity.driverGivenName, entity.driverFamilyName, entity.driverDateOfBirth, entity.driverNationality),
-                    Constructor(entity.constructorId, entity.constructorUrl, entity.constructorName, entity.constructorNationality),
-                    entity.grid,
-                    entity.laps,
-                    entity.status,
-                    entity.timeMillis?.let { ResultTime(it, entity.time ?: "") }, // Handle null time
-                    entity.fastestLapRank?.let { FastestLap(it, entity.fastestLapLap, entity.fastestLapTime?.let{ FastestLapTime(it)}) } //Handle null fastest lap
-                )
+
+        // Fetch from the local database first and emit immediately.
+        resultDao.getResultsByRace(season, round)
+            .onStart{
+                val localData = resultDao.getResultsByRace(season, round).first()
+                if (localData.isNotEmpty()) {
+                    Log.d("ResultRepository", "Emitting local results")
+                    emit(Resource.Success(localData.map { entity ->
+                        Result(
+                            entity.driverNumber,
+                            entity.position,
+                            entity.positionText,
+                            entity.points,
+                            Driver(entity.driverId, entity.driverPermanentNumber, entity.driverCode, entity.driverUrl, entity.driverGivenName, entity.driverFamilyName, entity.driverDateOfBirth, entity.driverNationality),
+                            Constructor(entity.constructorId, entity.constructorUrl, entity.constructorName, entity.constructorNationality),
+                            entity.grid,
+                            entity.laps,
+                            entity.status,
+                            entity.timeMillis?.let { ResultTime(it, entity.time ?: "") }, // Handle null time
+                            entity.fastestLapRank?.let { FastestLap(it, entity.fastestLapLap, entity.fastestLapTime?.let{ FastestLapTime(it)}) } //Handle null fastest lap
+                        )
+                    }))
+                }
             }
-            emit(Resource.Success(results)) // Emit database data
-            emit(Resource.Loading(false))
-            Log.d("ResultRepository", "Emitted Success from database and Loading(false)")
-        }else{
-            Log.d("ResultRepository", "Database is empty or query returned no results")
-        }
+            .map { entities ->
+                // Map from your ResultEntity to your Result data class
+                val results = entities.map { entity ->
+                    Result(
+                        entity.driverNumber,
+                        entity.position,
+                        entity.positionText,
+                        entity.points,
+                        Driver(entity.driverId, entity.driverPermanentNumber, entity.driverCode, entity.driverUrl, entity.driverGivenName, entity.driverFamilyName, entity.driverDateOfBirth, entity.driverNationality),
+                        Constructor(entity.constructorId, entity.constructorUrl, entity.constructorName, entity.constructorNationality),
+                        entity.grid,
+                        entity.laps,
+                        entity.status,
+                        entity.timeMillis?.let { ResultTime(it, entity.time ?: "") }, // Handle null time
+                        entity.fastestLapRank?.let { FastestLap(it, entity.fastestLapLap, entity.fastestLapTime?.let{ FastestLapTime(it)}) } //Handle null fastest lap
+                    )
+                }
+                Resource.Success(results)  // Wrap in Resource.Success
+            }
+            .collect{
+                emit(it)
+                if(it is Resource.Success){
+                    emit(Resource.Loading(false))
+                }
+            }
 
         try {
             Log.d("ResultRepository", "Fetching from API...")
@@ -115,9 +139,6 @@ class ResultRepository @Inject constructor(
         } catch (e: HttpException) {
             Log.e("ResultRepository", "HTTP error", e)
             emit(Resource.Error("HTTP error: ${e.localizedMessage ?: "An unexpected error occurred."}"))
-        } finally {
-            emit(Resource.Loading(false)) // Always emit Loading(false)
-            Log.d("ResultRepository", "Emitted Loading(false) in finally block")
         }
     }.catch { e ->
         Log.e("ResultRepository", "Flow error", e)

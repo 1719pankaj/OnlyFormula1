@@ -53,3 +53,4 @@ data class JolpicaPractice(
     val date: String,
     val time: String?
 )
+

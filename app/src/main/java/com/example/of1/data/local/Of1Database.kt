@@ -8,6 +8,7 @@ import com.example.of1.data.local.dao.CarDataDao
 import com.example.of1.data.local.dao.DriverDao
 import com.example.of1.data.local.dao.LapDao
 import com.example.of1.data.local.dao.MeetingDao
+import com.example.of1.data.local.dao.PitStopDao
 import com.example.of1.data.local.dao.PositionDao
 import com.example.of1.data.local.dao.RaceDao
 import com.example.of1.data.local.dao.ResultDao
@@ -17,6 +18,7 @@ import com.example.of1.data.local.entity.CarDataEntity
 import com.example.of1.data.local.entity.DriverEntity
 import com.example.of1.data.local.entity.LapEntity
 import com.example.of1.data.local.entity.MeetingEntity
+import com.example.of1.data.local.entity.PitStopEntity
 import com.example.of1.data.local.entity.PositionEntity
 import com.example.of1.data.local.entity.RaceEntity
 import com.example.of1.data.local.entity.ResultEntity
@@ -32,7 +34,8 @@ import com.example.of1.data.local.entity.SessionEntity
     DriverEntity::class,
     PositionEntity::class,
     LapEntity::class,
-    CarDataEntity::class], version = 2, exportSchema = false) // Add entities, update version
+    CarDataEntity::class,
+    PitStopEntity::class ], version = 3, exportSchema = false) // Add entities, update version
 
 abstract class Of1Database : RoomDatabase() {
 
@@ -45,6 +48,7 @@ abstract class Of1Database : RoomDatabase() {
     abstract fun positionDao(): PositionDao
     abstract fun lapDao(): LapDao
     abstract fun carDataDao(): CarDataDao
+    abstract fun pitStopDao(): PitStopDao
 
     companion object {
         @Volatile

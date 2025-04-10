@@ -4,6 +4,7 @@ import com.example.of1.data.model.Meeting
 import com.example.of1.data.model.openf1.OF1DriverResponse
 import com.example.of1.data.model.openf1.OpenF1CarDataResponse
 import com.example.of1.data.model.openf1.OpenF1LapResponse
+import com.example.of1.data.model.openf1.OpenF1PitResponse
 import com.example.of1.data.model.openf1.OpenF1PositionResponse
 import com.example.of1.data.model.openf1.OpenF1SessionResponse
 
@@ -55,7 +56,16 @@ interface OpenF1ApiService {
     suspend fun getCarData(
         @Query("driver_number") driverNumber: Int,
         @Query("session_key") sessionKey: Int,
-        @Query("date>=", encoded = false) date: String? = null // Optional date for updates
+        @Query("date>", encoded = false) date: String? = null, // Optional date for updates
+        @Query("date<", encoded = false) endDate: String? = null, // Add endDate
+        @Query("speed>", encoded = false) speedGreaterThan: Int = 1 // Add speed filter
     ): Response<List<OpenF1CarDataResponse>>
+
+    @GET("pit")
+    suspend fun getPits(
+        @Query("session_key") sessionKey: Int,
+        @Query("driver_number") driverNumber: Int,
+        @Query("date>", encoded = false) date: String? = null // For live updates
+    ): Response<List<OpenF1PitResponse>>
 
 }

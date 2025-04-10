@@ -68,8 +68,14 @@
         android:name="com.example.of1.ui.sessions.SessionsFragment"
         android:label="SessionsFragment" >
         <argument
-            android:name="meetingKey"
-            app:argType="integer" />
+            android:name="seasonYear"
+            app:argType="string" />
+        <argument
+            android:name="dateStart"
+            app:argType="string" />
+        <argument
+            android:name="dateEnd"
+            app:argType="string" />
         <action
             android:id="@+id/actionSessionsFragment_toPositionsFragment"
             app:destination="@id/positionsFragment" />
@@ -125,6 +131,14 @@
         <argument
             android:name="sessionKey"
             app:argType="integer" />
+        <argument
+            android:name="startDate"
+            app:argType="string"
+            app:nullable="true" />  <!-- Allow null -->
+        <argument
+            android:name="endDate"
+            app:argType="string"
+            app:nullable="true" />    <!-- Allow null -->
         <argument
             android:name="isLive"
             app:argType="boolean" />
