@@ -87,14 +87,12 @@ jobs:
           Write-Host "Set version_name output variable to: '$version'"
 
       - name: Build Debug APK
-        # Set only the env vars needed for signing, NOT the file path
         env:
           DEBUG_STORE_PASSWORD: ${{ secrets.DEBUG_STORE_PASSWORD }}
           DEBUG_KEY_ALIAS: ${{ secrets.DEBUG_KEY_ALIAS }}
           DEBUG_KEY_PASSWORD: ${{ secrets.DEBUG_KEY_PASSWORD }}
-          # *** REMOVED DEBUG_STORE_FILE ***
-        # Run gradle; Gradle will find the keystore at the default location
-        run: ./gradlew.bat assembleDebug --no-daemon
+        # Add --stacktrace
+        run: ./gradlew.bat assembleDebug --no-daemon --stacktrace
 
       - name: Create Git Tag
         run: |
