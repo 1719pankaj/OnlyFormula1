@@ -40,10 +40,16 @@ jobs:
           if (-not [string]::IsNullOrEmpty($base64)) {
             try {
               $bytes = [System.Convert]::FromBase64String($base64)
-              Set-Content -Path $keystorePath -Value $bytes -Encoding Byte
+
+              # --- CHANGE HERE ---
+              # Use .NET method to write raw bytes directly
+              [System.IO.File]::WriteAllBytes($keystorePath, $bytes)
+              # --- END CHANGE ---
+
               Write-Host "Successfully decoded and wrote debug.keystore to $keystorePath"
             } catch {
-              Write-Error "Failed to decode or write debug.keystore: $_"
+              # Catch potential errors during decoding OR writing
+              Write-Error "Failed to decode or write debug.keystore: $($_.Exception.Message)"
               exit 1
             }
           } else {
