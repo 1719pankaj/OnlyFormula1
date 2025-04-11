@@ -21,13 +21,15 @@ class LapRepository @Inject constructor(
 ) {
 
     fun getLaps(sessionKey: Int, driverNumber: Int): Flow<Resource<List<Lap>>> = flow {
-        emit(Resource.Loading())
+        emit(Resource.Loading()) // Emit Loading initially
         Log.d("LapRepository", "Initial Loading emitted")
 
-        // Determine the latest lap number for updates (do this early)
+        // Determine the latest lap number for updates
         val latestLapNumber = lapDao.getLatestLapNumber(sessionKey, driverNumber)
         val adjustedLapNumber = if (latestLapNumber != null) latestLapNumber - 1 else null
-        Log.d("LapRepository", "Latest lap number from DB: $latestLapNumber, Adjusted for query: $adjustedLapNumber")
+        Log.d("LapRepository", "Latest lap#: $latestLapNumber, Adjusted#: $adjustedLapNumber")
+
+        var emittedDataFromCache = false // Flag to track if cache was used on error
 
         try {
             Log.d("LapRepository", "Fetching from API...")
@@ -38,140 +40,77 @@ class LapRepository @Inject constructor(
                 Log.d("LapRepository", "API call successful: ${laps.size} laps")
 
                 val lapEntities = laps.map { lap ->
-                    LapEntity(
-                        meetingKey = lap.meetingKey,
-                        sessionKey = lap.sessionKey,
-                        driverNumber = lap.driverNumber,
-                        i1Speed = lap.i1Speed,
-                        i2Speed = lap.i2Speed,
-                        stSpeed = lap.stSpeed,
-                        dateStart = lap.dateStart,
-                        lapDuration = lap.lapDuration,
-                        isPitOutLap = lap.isPitOutLap,
-                        durationSector1 = lap.durationSector1,
-                        durationSector2 = lap.durationSector2,
-                        durationSector3 = lap.durationSector3,
-                        lapNumber = lap.lapNumber,
-                        segmentsSector1 = lap.segmentsSector1,
-                        segmentsSector2 = lap.segmentsSector2,
-                        segmentsSector3 = lap.segmentsSector3,
-                        lastUpdate = System.currentTimeMillis()
+                    LapEntity( /* ... mapping ... */
+                        meetingKey = lap.meetingKey, sessionKey = lap.sessionKey, driverNumber = lap.driverNumber,
+                        i1Speed = lap.i1Speed, i2Speed = lap.i2Speed, stSpeed = lap.stSpeed,
+                        dateStart = lap.dateStart, lapDuration = lap.lapDuration, isPitOutLap = lap.isPitOutLap,
+                        durationSector1 = lap.durationSector1, durationSector2 = lap.durationSector2, durationSector3 = lap.durationSector3,
+                        lapNumber = lap.lapNumber, segmentsSector1 = lap.segmentsSector1, segmentsSector2 = lap.segmentsSector2,
+                        segmentsSector3 = lap.segmentsSector3, lastUpdate = System.currentTimeMillis()
                     )
                 }
 
                 if(lapEntities.isNotEmpty()){
-                    lapDao.insertLaps(lapEntities) // Insert/Update using REPLACE strategy
+                    lapDao.insertLaps(lapEntities)
                     Log.d("LapRepository", "Inserted/Updated laps into database")
                 }
 
-                // After successful API call and DB update, query the DB again
-                val allLaps = lapDao.getLapsBySessionAndDriver(sessionKey, driverNumber).first().map { entity ->
-                    Lap(
-                        driverNumber = entity.driverNumber,
-                        lapNumber = entity.lapNumber,
-                        lapDuration = entity.lapDuration,
-                        durationSector1 = entity.durationSector1,
-                        durationSector2 = entity.durationSector2,
-                        durationSector3 = entity.durationSector3,
-                        i1Speed = entity.i1Speed,
-                        i2Speed = entity.i2Speed,
-                        stSpeed = entity.stSpeed,
-                        segmentsSector1 = entity.segmentsSector1,
-                        segmentsSector2 = entity.segmentsSector2,
-                        segmentsSector3 = entity.segmentsSector3,
-                        dateStart = entity.dateStart
-                    )
-                }
-                emit(Resource.Success(allLaps)) // Emit the final Success state
+                // Query DB *after* successful API call and insert/update
+                val allLaps = lapDao.getLapsBySessionAndDriver(sessionKey, driverNumber).first().map { it.toLap() }
+                emit(Resource.Success(allLaps))
                 Log.d("LapRepository", "Emitted Success from API/DB")
 
             } else {
                 // API call failed, try emitting local data if available
+                Log.w("LapRepository", "API failed (${response.code()}), attempting to load from cache.")
                 val localData = lapDao.getLapsBySessionAndDriver(sessionKey, driverNumber).first()
                 if (localData.isNotEmpty()) {
-                    Log.w("LapRepository", "API failed (${response.code()}), emitting cached data.")
-                    emit(Resource.Success(localData.map { entity ->
-                        Lap(
-                            driverNumber = entity.driverNumber,
-                            lapNumber = entity.lapNumber,
-                            lapDuration = entity.lapDuration,
-                            durationSector1 = entity.durationSector1,
-                            durationSector2 = entity.durationSector2,
-                            durationSector3 = entity.durationSector3,
-                            i1Speed = entity.i1Speed,
-                            i2Speed = entity.i2Speed,
-                            stSpeed = entity.stSpeed,
-                            segmentsSector1 = entity.segmentsSector1,
-                            segmentsSector2 = entity.segmentsSector2,
-                            segmentsSector3 = entity.segmentsSector3,
-                            dateStart = entity.dateStart
-                        )
-                    }))
+                    emit(Resource.Success(localData.map { it.toLap() }))
+                    emittedDataFromCache = true
+                    Log.d("LapRepository", "Emitted Success from cache after API failure.")
                 } else {
                     val errorBody = response.errorBody()?.string()
                     Log.e("LapRepository", "API call failed: ${response.code()}, errorBody: $errorBody")
                     emit(Resource.Error("Error fetching laps: ${response.code()} - $errorBody"))
                 }
             }
-        } catch (e: IOException) {
-            // Network error, try emitting local data
-            val localData = lapDao.getLapsBySessionAndDriver(sessionKey, driverNumber).first()
-            if (localData.isNotEmpty()) {
-                Log.w("LapRepository", "Network error, emitting cached data.", e)
-                emit(Resource.Success(localData.map { entity ->
-                    Lap(
-                        driverNumber = entity.driverNumber,
-                        lapNumber = entity.lapNumber,
-                        lapDuration = entity.lapDuration,
-                        durationSector1 = entity.durationSector1,
-                        durationSector2 = entity.durationSector2,
-                        durationSector3 = entity.durationSector3,
-                        i1Speed = entity.i1Speed,
-                        i2Speed = entity.i2Speed,
-                        stSpeed = entity.stSpeed,
-                        segmentsSector1 = entity.segmentsSector1,
-                        segmentsSector2 = entity.segmentsSector2,
-                        segmentsSector3 = entity.segmentsSector3,
-                        dateStart = entity.dateStart
-                    )
-                }))
-            } else {
-                Log.e("LapRepository", "Network error", e)
-                emit(Resource.Error("Network error: ${e.localizedMessage ?: "Check your internet connection."}"))
-            }
-        } catch (e: HttpException) {
-            // HTTP error, try emitting local data
-            val localData = lapDao.getLapsBySessionAndDriver(sessionKey, driverNumber).first()
-            if (localData.isNotEmpty()) {
-                Log.w("LapRepository", "HTTP error, emitting cached data.", e)
-                emit(Resource.Success(localData.map { entity ->
-                    Lap(
-                        driverNumber = entity.driverNumber,
-                        lapNumber = entity.lapNumber,
-                        lapDuration = entity.lapDuration,
-                        durationSector1 = entity.durationSector1,
-                        durationSector2 = entity.durationSector2,
-                        durationSector3 = entity.durationSector3,
-                        i1Speed = entity.i1Speed,
-                        i2Speed = entity.i2Speed,
-                        stSpeed = entity.stSpeed,
-                        segmentsSector1 = entity.segmentsSector1,
-                        segmentsSector2 = entity.segmentsSector2,
-                        segmentsSector3 = entity.segmentsSector3,
-                        dateStart = entity.dateStart
-                    )
-                }))
-            } else {
-                Log.e("LapRepository", "HTTP error", e)
-                emit(Resource.Error("HTTP error: ${e.localizedMessage ?: "An unexpected error occurred."}"))
+        } catch (e: Exception) { // Catch broader exceptions like IOException, HttpException
+            Log.e("LapRepository", "Error during lap fetch/processing", e)
+            // Attempt to load from cache on any exception during API call/processing
+            try {
+                val localData = lapDao.getLapsBySessionAndDriver(sessionKey, driverNumber).first()
+                if (localData.isNotEmpty()) {
+                    Log.w("LapRepository", "Exception occurred, emitting cached data.", e)
+                    emit(Resource.Success(localData.map { it.toLap() }))
+                    emittedDataFromCache = true
+                } else {
+                    emit(Resource.Error("Error: ${e.localizedMessage ?: "Unknown fetch error"}"))
+                }
+            } catch (dbException: Exception) {
+                Log.e("LapRepository", "Error fetching from DB after API exception", dbException)
+                emit(Resource.Error("Error: ${e.localizedMessage ?: "Unknown fetch error"} and DB error"))
             }
         } finally {
-            emit(Resource.Loading(false)) // Ensure loading stops
+            emit(Resource.Loading(false))
             Log.d("LapRepository", "Emitted Loading(false) in finally block")
         }
-    }.catch { e ->
-        Log.e("LapRepository", "Flow error", e)
-        emit(Resource.Error("Unexpected error: ${e.localizedMessage ?: "Unknown error"}"))
-        emit(Resource.Loading(false))
+    }
+    // Helper extension function (can be moved to a utils file if preferred)
+    private fun LapEntity.toLap(): Lap {
+        return Lap(
+            driverNumber = this.driverNumber,
+            lapNumber = this.lapNumber,
+            lapDuration = this.lapDuration,
+            durationSector1 = this.durationSector1,
+            durationSector2 = this.durationSector2,
+            durationSector3 = this.durationSector3,
+            i1Speed = this.i1Speed,
+            i2Speed = this.i2Speed,
+            stSpeed = this.stSpeed,
+            segmentsSector1 = this.segmentsSector1,
+            segmentsSector2 = this.segmentsSector2,
+            segmentsSector3 = this.segmentsSector3,
+            dateStart = this.dateStart
+        )
     }
 }

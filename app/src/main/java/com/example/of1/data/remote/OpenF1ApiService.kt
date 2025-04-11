@@ -7,6 +7,7 @@ import com.example.of1.data.model.openf1.OpenF1LapResponse
 import com.example.of1.data.model.openf1.OpenF1PitResponse
 import com.example.of1.data.model.openf1.OpenF1PositionResponse
 import com.example.of1.data.model.openf1.OpenF1SessionResponse
+import com.example.of1.data.model.openf1.OpenF1TeamRadioResponse
 
 import retrofit2.Response
 import retrofit2.http.GET
@@ -67,5 +68,11 @@ interface OpenF1ApiService {
         @Query("driver_number") driverNumber: Int,
         @Query("date>", encoded = false) date: String? = null // For live updates
     ): Response<List<OpenF1PitResponse>>
+
+    @GET("team_radio") // Correct endpoint
+    suspend fun getTeamRadio(
+        @Query("session_key") sessionKey: Int,
+        @Query("date>", encoded = false) date: String? = null // For live updates
+    ): Response<List<OpenF1TeamRadioResponse>> // Use the correct response type
 
 }

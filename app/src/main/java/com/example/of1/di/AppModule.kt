@@ -12,6 +12,7 @@ import com.example.of1.data.local.dao.RaceDao
 import com.example.of1.data.local.dao.ResultDao
 import com.example.of1.data.local.dao.SeasonDao
 import com.example.of1.data.local.dao.SessionDao
+import com.example.of1.data.local.dao.TeamRadioDao
 import com.example.of1.data.remote.JolpicaApiService
 import com.example.of1.data.remote.OpenF1ApiService
 import com.example.of1.data.repository.CarDataRepository
@@ -24,6 +25,7 @@ import com.example.of1.data.repository.RaceRepository
 import com.example.of1.data.repository.ResultRepository
 import com.example.of1.data.repository.SeasonRepository
 import com.example.of1.data.repository.SessionRepository
+import com.example.of1.data.repository.TeamRadioRepository
 import com.example.of1.utils.LimitedBodyLoggingInterceptor
 import dagger.Module
 import dagger.Provides
@@ -210,6 +212,18 @@ object AppModule {
     @Singleton
     fun providePitStopRepository(apiService: OpenF1ApiService, pitStopDao: PitStopDao): PitStopRepository {
         return PitStopRepository(apiService, pitStopDao)
+    }
+
+    @Provides
+    @Singleton
+    fun provideTeamRadioDao(database: Of1Database): TeamRadioDao {
+        return database.teamRadioDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideTeamRadioRepository(apiService: OpenF1ApiService, teamRadioDao: TeamRadioDao): TeamRadioRepository {
+        return TeamRadioRepository(apiService, teamRadioDao)
     }
 }
 

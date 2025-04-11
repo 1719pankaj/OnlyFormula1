@@ -24,6 +24,8 @@ import com.example.of1.data.local.entity.RaceEntity
 import com.example.of1.data.local.entity.ResultEntity
 import com.example.of1.data.local.entity.SeasonEntity
 import com.example.of1.data.local.entity.SessionEntity
+import com.example.of1.data.local.dao.TeamRadioDao
+import com.example.of1.data.local.entity.TeamRadioEntity
 
 @Database(entities = [
     SessionEntity::class,
@@ -35,7 +37,8 @@ import com.example.of1.data.local.entity.SessionEntity
     PositionEntity::class,
     LapEntity::class,
     CarDataEntity::class,
-    PitStopEntity::class ], version = 3, exportSchema = false) // Add entities, update version
+    PitStopEntity::class,
+    TeamRadioEntity::class], version = 4, exportSchema = false) // Add entities, update version
 
 abstract class Of1Database : RoomDatabase() {
 
@@ -49,6 +52,7 @@ abstract class Of1Database : RoomDatabase() {
     abstract fun lapDao(): LapDao
     abstract fun carDataDao(): CarDataDao
     abstract fun pitStopDao(): PitStopDao
+    abstract fun teamRadioDao(): TeamRadioDao
 
     companion object {
         @Volatile

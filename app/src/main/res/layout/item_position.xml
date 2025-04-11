@@ -6,6 +6,7 @@
     android:layout_height="wrap_content"
     android:padding="16dp">
 
+    <!-- Existing TextViews for position, number, name, team, country -->
     <TextView
         android:id="@+id/tv_position"
         android:layout_width="wrap_content"
@@ -43,7 +44,7 @@
         android:layout_marginStart="8dp"
         android:textSize="16sp"
         android:textStyle="bold"
-        app:layout_constraintEnd_toStartOf="@+id/tv_team_color"
+        app:layout_constraintEnd_toStartOf="@+id/btn_play_radio"
         app:layout_constraintStart_toEndOf="@+id/iv_headshot"
         app:layout_constraintTop_toTopOf="@+id/iv_headshot"
         tools:text="Lewis Hamilton" />
@@ -53,7 +54,7 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginTop="4dp"
-        app:layout_constraintEnd_toStartOf="@+id/tv_country_code"
+        app:layout_constraintEnd_toEndOf="@+id/tv_driver_name"
         app:layout_constraintStart_toStartOf="@+id/tv_driver_name"
         app:layout_constraintTop_toBottomOf="@+id/tv_driver_name"
         tools:text="Mercedes" />
@@ -63,7 +64,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginEnd="8dp"
-        app:layout_constraintBottom_toBottomOf="@+id/tv_team_color"
+        app:layout_constraintBottom_toBottomOf="@+id/iv_headshot"
         app:layout_constraintEnd_toStartOf="@+id/tv_team_color"
         tools:text="GBR" />
 
@@ -75,5 +76,20 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/tv_position"
         tools:background="#E80020" />
+
+    <!-- Add the Play Button -->
+    <ImageButton
+        android:id="@+id/btn_play_radio"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:src="@drawable/ic_play"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="Play Latest Radio"
+        android:visibility="gone"
+        tools:visibility="visible"
+        app:layout_constraintEnd_toStartOf="@+id/tv_team_color"
+        app:layout_constraintTop_toTopOf="@+id/tv_driver_name"
+        app:layout_constraintBottom_toBottomOf="@+id/tv_team_name"
+        android:layout_marginEnd="8dp"/>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
