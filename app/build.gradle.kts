@@ -16,27 +16,11 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"
+
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
-    signingConfigs {
-        getByName("debug") {
-            storeFile = file(
-                System.getenv("DEBUG_STORE_FILE")
-                    ?: (System.getProperty("user.home") + "/.android/debug.keystore")
-            )
-            storePassword = System.getenv("DEBUG_STORE_PASSWORD") ?: "android"
-            keyAlias = System.getenv("DEBUG_KEY_ALIAS") ?: "androiddebugkey"
-            keyPassword = System.getenv("DEBUG_KEY_PASSWORD") ?: "android"
-        }
-    }
-
     buildTypes {
-        debug {
-            // Ensure the debug build type uses the debug signing config
-            signingConfig = signingConfigs.getByName("debug")
-            // ... other debug settings
-        }
         release {
             isMinifyEnabled = false
             proguardFiles(
@@ -94,12 +78,4 @@ dependencies {
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
-}
-
-tasks.register("printVersionName") {
-    doLast {
-        // Make sure 'android' is accessible here. If you applied the 'com.android.application'
-        // plugin at the top, it should be.
-        println(android.defaultConfig.versionName)
-    }
 }
