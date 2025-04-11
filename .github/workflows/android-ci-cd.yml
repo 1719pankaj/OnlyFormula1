@@ -86,6 +86,18 @@ jobs:
           echo "version_name=$version" >> $env:GITHUB_OUTPUT
           Write-Host "Set version_name output variable to: '$version'"
 
+      - name: Display Signing Environment Variables
+        run: |
+          echo "Store Pass Env Var Exists: $(Test-Path Env:DEBUG_STORE_PASSWORD)"
+          echo "Key Alias Env Var Exists: $(Test-Path Env:DEBUG_KEY_ALIAS)"
+          echo "Key Pass Env Var Exists: $(Test-Path Env:DEBUG_KEY_PASSWORD)"
+          # Optionally, try printing the values (BE CAREFUL - this might expose them in logs if not masked)
+          # You can check GitHub Actions masking, but let's start with just checking existence.
+          echo "DEBUG_STORE_PASSWORD='${{ env.DEBUG_STORE_PASSWORD }}'" # Requires env block below
+        env: # If you uncomment the echo line above, you need this env block too
+          DEBUG_STORE_PASSWORD: ${{ secrets.DEBUG_STORE_PASSWORD }}
+      # --- END NEW DEBUGGING STEP ---
+
       - name: Build Debug APK
         env:
           DEBUG_STORE_PASSWORD: ${{ secrets.DEBUG_STORE_PASSWORD }}
