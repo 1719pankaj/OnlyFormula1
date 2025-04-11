@@ -1,0 +1,129 @@
+# .github/workflows/android-ci-cd.yml
+
+name: Android CI/CD Debug Build & Release
+
+# Controls when the workflow will run
+on:
+  # Triggers the workflow on push events but only for the main branch
+  push:
+    branches: [ main ] # Adjust if your main branch is named differently (e.g., master)
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# Grant permissions for the workflow to create releases and tags
+permissions:
+  contents: write # Needed to create releases and tags
+
+jobs:
+  build-and-release:
+    # The type of runner that the job will run on
+    runs-on: windows-latest # You specified Windows
+
+    steps:
+      # --- 1. Setup Environment ---
+
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Sets up JDK 17. Adjust the version if your project needs a different one.
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin' # Popular OpenJDK distribution
+
+      # --- 2. Handle Custom Debug Keystore ---
+      # Decodes the Base64 secret and writes it to the location Gradle expects
+      - name: Decode debug.keystore
+        # Creates the .android directory if it doesn't exist
+        # Uses PowerShell on Windows to decode the Base64 secret and write the file
+        run: |
+          New-Item -ItemType Directory -Force -Path "$HOME\.android"
+          $base64 = "${{ secrets.DEBUG_KEYSTORE_BASE64 }}"
+          $bytes = [System.Convert]::FromBase64String($base64)
+          Set-Content -Path "$HOME\.android\debug.keystore" -Value $bytes -Encoding Byte
+        # Sets environment variables for Gradle to use (reads secrets)
+        env:
+          DEBUG_KEYSTORE_BASE64: ${{ secrets.DEBUG_KEYSTORE_BASE64 }}
+          DEBUG_STORE_PASSWORD: ${{ secrets.DEBUG_KEYSTORE_PASSWORD }}
+          DEBUG_KEY_ALIAS: ${{ secrets.DEBUG_KEY_ALIAS }}
+          DEBUG_KEY_PASSWORD: ${{ secrets.DEBUG_KEY_PASSWORD }}
+          # Set the env var for the store file path used in build.gradle.kts
+          DEBUG_STORE_FILE: "$HOME\.android\debug.keystore"
+
+      # --- 3. Grant execute permission for gradlew ---
+      #      # Although Windows uses gradlew.bat, granting execute is good practice
+      # and doesn't hurt on Windows. Might be needed if scripts call gradlew directly.
+      - name: Grant execute permission for gradlew
+        run: chmod +x ./gradlew
+
+      # --- 4. Get Version Name from Gradle ---
+      # Runs the custom Gradle task to get the version name
+      # The output is captured and made available for later steps via outputs.version_name
+      - name: Get Version Name
+        id: get_version # Give this step an ID to reference its output
+        # Run the printVersionName task we added. Use -q for quiet output (only prints the version)
+        # Use gradlew.bat on Windows
+        run: |
+          $version = ./gradlew.bat :app:printVersionName -q
+          echo "version_name=$version" >> $env:GITHUB_OUTPUT
+        # Sets environment variables needed for the signing config within build.gradle.kts
+        env:
+          DEBUG_STORE_PASSWORD: ${{ secrets.DEBUG_KEYSTORE_PASSWORD }}
+          DEBUG_KEY_ALIAS: ${{ secrets.DEBUG_KEY_ALIAS }}
+          DEBUG_KEY_PASSWORD: ${{ secrets.DEBUG_KEY_PASSWORD }}
+          DEBUG_STORE_FILE: "$HOME\.android\debug.keystore"
+
+
+      # --- 5. Build Debug APK ---
+      # Runs the gradle wrapper command to assemble the debug APK
+      - name: Build Debug APK
+        # Use gradlew.bat on Windows
+        run: ./gradlew.bat assembleDebug
+        # Sets environment variables needed for the signing config within build.gradle.kts
+        env:
+          DEBUG_STORE_PASSWORD: ${{ secrets.DEBUG_KEYSTORE_PASSWORD }}
+          DEBUG_KEY_ALIAS: ${{ secrets.DEBUG_KEY_ALIAS }}
+          DEBUG_KEY_PASSWORD: ${{ secrets.DEBUG_KEY_PASSWORD }}
+          DEBUG_STORE_FILE: "$HOME\.android\debug.keystore"
+
+      # --- 6. Create Git Tag ---
+      # Uses the version name captured in the 'get_version' step
+      - name: Create Git Tag
+        run: |
+          git tag ${{ steps.get_version.outputs.version_name }}
+          git push origin ${{ steps.get_version.outputs.version_name }}
+
+      # --- 7. Create GitHub Release ---
+      # Creates a release associated with the tag pushed in the previous step
+      - name: Create GitHub Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions automatically
+        with:
+          tag_name: ${{ steps.get_version.outputs.version_name }}
+          release_name: Release ${{ steps.get_version.outputs.version_name }}
+          body: |
+            Debug build for version ${{ steps.get_version.outputs.version_name }}
+          draft: false
+          prerelease: true # Mark as pre-release since it's a debug build
+
+      # --- 8. Upload APK to Release ---
+      # Uploads the generated debug APK file to the created GitHub Release
+      - name: Upload Debug APK to Release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          # This is the upload URL from the output of the 'create_release' step
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          # Path to the APK file to upload. Adjust 'app-debug.apk' if your output filename differs.
+          # Also adjust 'app' if your application module name is different.
+          asset_path: ./app/build/outputs/apk/debug/app-debug.apk
+          # Name of the asset file in the release
+          asset_name: app-debug-${{ steps.get_version.outputs.version_name }}.apk
+          # Content type of the asset
+          asset_content_type: application/vnd.android.package-archive
