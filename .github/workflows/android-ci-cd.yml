@@ -29,7 +29,7 @@ jobs:
           # Secret for decoding
           DEBUG_KEYSTORE_BASE64: ${{ secrets.DEBUG_KEYSTORE_BASE64 }}
           # Secret needed for validation (keytool)
-          DEBUG_STORE_PASSWORD: ${{ android }}
+          DEBUG_STORE_PASSWORD: ${{ secrets.DEBUG_STORE_PASSWORD }}
         run: |
           # --- Decoding Part ---
           $keystoreDir = Join-Path $HOME ".android"
