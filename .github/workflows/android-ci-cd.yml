@@ -37,25 +37,33 @@ jobs:
       # --- 2. Handle Custom Debug Keystore ---
       # Decodes the Base64 secret and writes it to the location Gradle expects
       - name: Decode debug.keystore
+        # Define env vars for THIS step
+        env:
+          DEBUG_KEYSTORE_BASE64: ${{ secrets.DEBUG_KEYSTORE_BASE64 }}
         # Creates the .android directory if it doesn't exist
         # Uses PowerShell on Windows to decode the Base64 secret and write the file
         run: |
           New-Item -ItemType Directory -Force -Path "$HOME\.android"
-          $base64 = "${{ secrets.DEBUG_KEYSTORE_BASE64 }}"
-          $bytes = [System.Convert]::FromBase64String($base64)
-          Set-Content -Path "$HOME\.android\debug.keystore" -Value $bytes -Encoding Byte
-        # Sets environment variables for Gradle to use (reads secrets)
-        env:
-          DEBUG_KEYSTORE_BASE64: ${{ secrets.DEBUG_KEYSTORE_BASE64 }}
-          DEBUG_STORE_PASSWORD: ${{ secrets.DEBUG_KEYSTORE_PASSWORD }}
-          DEBUG_KEY_ALIAS: ${{ secrets.DEBUG_KEY_ALIAS }}
-          DEBUG_KEY_PASSWORD: ${{ secrets.DEBUG_KEY_PASSWORD }}
-          # Set the env var for the store file path used in build.gradle.kts
-          DEBUG_STORE_FILE: "$HOME\.android\debug.keystore"
+          $base64 = $env:DEBUG_KEYSTORE_BASE64 # Read env var set for the step
+          if (-not [string]::IsNullOrEmpty($base64)) {
+            try {
+              $bytes = [System.Convert]::FromBase64String($base64)
+              Set-Content -Path "$HOME\.android\debug.keystore" -Value $bytes -Encoding Byte
+              Write-Host "Successfully decoded and wrote debug.keystore"
+            } catch {
+              Write-Error "Failed to decode or write debug.keystore: $_"
+              exit 1 # Fail the step if decoding fails
+            }
+          } else {
+            Write-Error "DEBUG_KEYSTORE_BASE64 secret is empty or not set!"
+            exit 1 # Fail the step
+          }
+
 
       # --- 3. Grant execute permission for gradlew ---
-      #      # Although Windows uses gradlew.bat, granting execute is good practice
-      # and doesn't hurt on Windows. Might be needed if scripts call gradlew directly.
+      # Although Windows uses gradlew.bat, this step using chmod is mostly
+      # harmless on Windows (affects tools like Git Bash if present) but
+      # unnecessary for running gradlew.bat directly. We'll keep it for now.
       - name: Grant execute permission for gradlew
         run: chmod +x ./gradlew
 
@@ -64,37 +72,56 @@ jobs:
       # The output is captured and made available for later steps via outputs.version_name
       - name: Get Version Name
         id: get_version # Give this step an ID to reference its output
+        # Sets environment variables needed by Gradle during THIS step's execution
+        env:
+          DEBUG_STORE_PASSWORD: ${{ secrets.DEBUG_STORE_PASSWORD }}
+          DEBUG_KEY_ALIAS: ${{ secrets.DEBUG_KEY_ALIAS }}
+          DEBUG_KEY_PASSWORD: ${{ secrets.DEBUG_KEY_PASSWORD }}
+          # Set the env var for the store file path used in build.gradle.kts
+          # Note: We use the correct path variable for PowerShell $HOME\.android\debug.keystore
+          DEBUG_STORE_FILE: "$HOME\.android\debug.keystore"
         # Run the printVersionName task we added. Use -q for quiet output (only prints the version)
         # Use gradlew.bat on Windows
         run: |
-          $version = ./gradlew.bat :app:printVersionName -q
+          Write-Host "Attempting to get version name using gradlew.bat..."
+          # Execute gradlew.bat and capture output/errors
+          $versionOutput = ./gradlew.bat :app:printVersionName -q --no-daemon 2>&1
+          # Check if the command execution itself failed (e.g., gradlew not found, script error)
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "Gradle task printVersionName failed. Output/Error: $versionOutput"
+            exit 1 # Fail the step
+          }
+          # Process the output assuming the task succeeded
+          $version = $versionOutput.Trim()
+          if ([string]::IsNullOrEmpty($version)) {
+             Write-Error "Gradle task printVersionName produced empty output!"
+             exit 1 # Fail the step
+          }
+          Write-Host "Raw version output: '$version'"
           echo "version_name=$version" >> $env:GITHUB_OUTPUT
-        # Sets environment variables needed for the signing config within build.gradle.kts
-        env:
-          DEBUG_STORE_PASSWORD: ${{ secrets.DEBUG_KEYSTORE_PASSWORD }}
-          DEBUG_KEY_ALIAS: ${{ secrets.DEBUG_KEY_ALIAS }}
-          DEBUG_KEY_PASSWORD: ${{ secrets.DEBUG_KEY_PASSWORD }}
-          DEBUG_STORE_FILE: "$HOME\.android\debug.keystore"
-
+          Write-Host "Set version_name output variable to: '$version'"
 
       # --- 5. Build Debug APK ---
       # Runs the gradle wrapper command to assemble the debug APK
       - name: Build Debug APK
-        # Use gradlew.bat on Windows
-        run: ./gradlew.bat assembleDebug
-        # Sets environment variables needed for the signing config within build.gradle.kts
+        # Sets environment variables needed by Gradle during THIS step's execution
         env:
-          DEBUG_STORE_PASSWORD: ${{ secrets.DEBUG_KEYSTORE_PASSWORD }}
+          DEBUG_STORE_PASSWORD: ${{ secrets.DEBUG_STORE_PASSWORD }}
           DEBUG_KEY_ALIAS: ${{ secrets.DEBUG_KEY_ALIAS }}
           DEBUG_KEY_PASSWORD: ${{ secrets.DEBUG_KEY_PASSWORD }}
+          # Set the env var for the store file path used in build.gradle.kts
           DEBUG_STORE_FILE: "$HOME\.android\debug.keystore"
+        # Use gradlew.bat on Windows
+        run: ./gradlew.bat assembleDebug --no-daemon
 
       # --- 6. Create Git Tag ---
       # Uses the version name captured in the 'get_version' step
       - name: Create Git Tag
         run: |
-          git tag ${{ steps.get_version.outputs.version_name }}
-          git push origin ${{ steps.get_version.outputs.version_name }}
+          $tagName = "${{ steps.get_version.outputs.version_name }}"
+          Write-Host "Attempting to create and push tag: $tagName"
+          git tag $tagName
+          git push origin $tagName
 
       # --- 7. Create GitHub Release ---
       # Creates a release associated with the tag pushed in the previous step
