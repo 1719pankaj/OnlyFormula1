@@ -66,46 +66,32 @@ jobs:
       - name: Get Version Name
         id: get_version
         env:
+          # Signing secrets needed if printVersionName task requires project evaluation
           DEBUG_KEYSTORE_PASSWORD: ${{ secrets.DEBUG_KEYSTORE_PASSWORD }}
           DEBUG_KEY_ALIAS: ${{ secrets.DEBUG_KEY_ALIAS }}
           DEBUG_KEY_PASSWORD: ${{ secrets.DEBUG_KEY_PASSWORD }}
         run: |
-          Write-Host "Attempting to get version name by running printVersionName..."
-          # Run gradle, capture ALL output (stdout & stderr, just in case)
-          $rawOutput = ./gradlew.bat :app:printVersionName -q --no-daemon 2>&1
-          
-          # Check exit code FIRST.
+          # Run gradle using the command set up by gradle/actions/setup-gradle
+          $rawOutput = gradle :app:printVersionName -q --no-daemon 2>&1
+
           if ($LASTEXITCODE -ne 0) {
-            Write-Error "Gradle task printVersionName failed with exit code $LASTEXITCODE. Full output/Error: $rawOutput"
+            # The error message already includes $rawOutput
+            Write-Error "Gradle task printVersionName failed with exit code $LASTEXITCODE."
             exit 1
           }
-          
-          # If task succeeded, process the output:
-          Write-Host "Raw output from printVersionName: '$rawOutput'"
-          # Trim whitespace, then split by space, get the last non-empty element
           $parts = $rawOutput.Trim().Split([char[]]' ', [System.StringSplitOptions]::RemoveEmptyEntries)
-          
           if ($parts.Length -eq 0) {
-            Write-Error "Gradle task succeeded but splitting the output resulted in zero parts. Raw output: '$rawOutput'"
+            Write-Error "Gradle task succeeded but splitting output resulted in zero parts. Raw output: '$rawOutput'"
             exit 1
           }
-          
-          # Assume the version name is the last part
           $version = $parts[-1]
-          Write-Host "Extracted last part as version: '$version'"
-          
-          # Basic sanity check (optional: adjust regex if needed for your version format)
-          if (-not ($version -match "^\d+(\.\d+)*([\w-]*)$")) {
-             Write-Warning "Warning: Extracted version '$version' might not look like a standard version number."
-          }
-          
           if ([string]::IsNullOrEmpty($version)) {
              Write-Error "Extracted version is empty!"
              exit 1
           }
-          
           echo "version_name=$version" >> $env:GITHUB_OUTPUT
-          Write-Host "Set version_name output variable to: '$version'"
+          Write-Host "Version name set to: $version"
+
       # 6. Get Latest Commit Message
       - name: Get Latest Commit Message
         id: get_commit_message
