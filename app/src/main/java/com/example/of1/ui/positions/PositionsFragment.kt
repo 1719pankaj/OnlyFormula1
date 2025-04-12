@@ -19,6 +19,7 @@ import com.example.of1.utils.AudioPlayerManager // Import AudioPlayerManager
 import com.example.of1.utils.Resource
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
@@ -99,34 +100,69 @@ class PositionsFragment : Fragment() {
     private fun observeUiUpdates() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.uiPositions.collectLatest { uiPositionsList ->
-                    // Update adapter data
-                    positionAdapter.submitList(uiPositionsList)
-                    Log.d("PositionsFragment", "Success: Submitted ${uiPositionsList.size} UI positions")
 
-                    // --- Simplified Loading Indicator Logic ---
-                    // Hide loading indicator as soon as we have *any* data to display
-                    // Or if the underlying position flow is no longer loading (even if error)
-                    val positionsLoading = viewModel.positions.value is Resource.Loading
-                    binding.progressBar.visibility = if (positionsLoading && uiPositionsList.isEmpty()) View.VISIBLE else View.GONE
-                    Log.d("PositionsFragment", "Loading Indicator Check: positionsLoading=$positionsLoading, listIsEmpty=${uiPositionsList.isEmpty()}")
-                    // --- End Simplified Logic ---
+                // --- Observer 1: Update the RecyclerView Adapter ---
+                launch {
+                    viewModel.uiPositions.collectLatest { uiPositionsList ->
+                        positionAdapter.submitList(uiPositionsList)
+                        Log.d("PositionsFragment", "Success: Submitted ${uiPositionsList.size} UI positions")
+                        // Hide progress bar ONLY if we successfully submitted non-empty data
+                        if (uiPositionsList.isNotEmpty()) {
+                            binding.progressBar.visibility = View.GONE
+                            Log.d("PositionsFragment", "Hiding progress bar because UI list is not empty.")
+                        }
+                        // If the list is empty, the loading state below will control the bar
+                    }
+                }
+
+                // --- Observer 2: Control Loading Indicator and Handle Errors ---
+                launch {
+                    // Combine the *Resource* states of essential data sources
+                    combine(viewModel.positions, viewModel.drivers) { posResource, driverResource ->
+                        // Determine overall loading state (show if *either* essential source is loading)
+                        val isLoading = posResource is Resource.Loading || driverResource is Resource.Loading
+
+                        // Determine if there's a critical error
+                        val errorResource = if (posResource is Resource.Error) posResource
+                        else if (driverResource is Resource.Error) driverResource // Prioritize position error?
+                        else null
+
+                        Triple(isLoading, errorResource, viewModel.uiPositions.value.isNotEmpty()) // Pass loading, error, and if UI has data
+
+                    }.collectLatest { (isLoading, errorResource, hasUiData) ->
+
+                        if (errorResource != null) {
+                            // Handle error (show message, potentially hide loading)
+                            handleResourceError(if (viewModel.positions.value is Resource.Error) "Position" else "Driver", errorResource.message)
+                            binding.progressBar.visibility = View.GONE // Hide on error
+                            Log.d("PositionsFragment", "Error occurred, hiding progress bar.")
+                        } else if (isLoading && !hasUiData) {
+                            // Show loading only if actually loading AND UI isn't populated yet
+                            binding.progressBar.visibility = View.VISIBLE
+                            Log.d("PositionsFragment", "Showing progress bar (Loading: $isLoading, HasData: $hasUiData)")
+                        } else if (!isLoading && hasUiData) {
+                            // Hide loading if not loading AND we have data
+                            binding.progressBar.visibility = View.GONE
+                            Log.d("PositionsFragment", "Hiding progress bar (Loading: $isLoading, HasData: $hasUiData)")
+                        }
+                        // If !isLoading and !hasUiData (e.g., empty success), keep progress bar hidden (or show empty state)
+                        else if (!isLoading && !hasUiData) {
+                            binding.progressBar.visibility = View.GONE
+                            Log.d("PositionsFragment", "Hiding progress bar (Not Loading, No Data)")
+                            // Consider showing an "Empty" message TextView here
+                        }
+                    }
                 }
             }
         }
-        // Observe individual flows for ERROR handling only
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                launch {
-                    viewModel.positions.collectLatest { if (it is Resource.Error) handleResourceError("Position", it.message) }
-                }
-                launch {
-                    viewModel.drivers.collectLatest { if (it is Resource.Error) handleResourceError("Driver", it.message)}
-                }
-                // Optionally observe team radio error
-                // launch { viewModel.teamRadioRaw.collectLatest { ... } }
-            }
-        }
+    }
+
+    private fun handleResourceError(source: String, message: String?) {
+        val errorMsg = "$source Error: ${message ?: "Unknown error"}"
+        Log.e("PositionsFragment", errorMsg)
+        // Avoid showing toast multiple times if both fail around the same time
+        // Maybe track if an error was already shown recently? For now, simple toast.
+        Toast.makeText(context, errorMsg, Toast.LENGTH_SHORT).show()
     }
 
     // Observer for playback state (updates button icons)
@@ -151,15 +187,6 @@ class PositionsFragment : Fragment() {
         }
     }
 
-    // Helper for error logging/display
-    private fun handleResourceError(source: String, message: String?) {
-        val errorMsg = "$source Error: ${message ?: "Unknown error"}"
-        Log.e("PositionsFragment", errorMsg)
-        Toast.makeText(context, errorMsg, Toast.LENGTH_SHORT).show() // Show brief error
-    }
-
-
-    // Remove updateLoadingIndicator - logic is now simpler within observeUiUpdates
 
     // Helper function within PositionsFragment
     private fun findAdapterPosition(url: String?): Int {

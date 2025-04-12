@@ -75,4 +75,10 @@ interface OpenF1ApiService {
         @Query("date>", encoded = false) date: String? = null // For live updates
     ): Response<List<OpenF1TeamRadioResponse>> // Use the correct response type
 
+    @GET("drivers")
+    suspend fun getDriverByName(
+        @Query("first_name", encoded = false) firstName: String,
+        @Query("last_name", encoded = false) lastName: String
+    ): Response<List<OF1DriverResponse>> //
+
 }

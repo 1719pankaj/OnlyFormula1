@@ -20,4 +20,17 @@ interface DriverDao {
 
     @Query("DELETE FROM drivers WHERE sessionKey = :sessionKey")
     suspend fun deleteDriversBySession(sessionKey: Int)
+
+    @Query("UPDATE drivers SET headshotUrl = :headshotUrl WHERE driverNumber = :driverNumber AND sessionKey = :sessionKey")
+    suspend fun updateHeadshotUrl(sessionKey: Int, driverNumber: Int, headshotUrl: String)
+
+    // Add query to get a driver needing update (might be useful)
+    @Query("SELECT * FROM drivers WHERE sessionKey = :sessionKey AND headshotUrl IS NULL")
+    fun getDriversWithNullHeadshots(sessionKey: Int): Flow<List<DriverEntity>>
+
+    // Add query to get driver names for fallback
+    @Query("SELECT firstName, lastName FROM drivers WHERE driverNumber = :driverNumber AND sessionKey = :sessionKey LIMIT 1")
+    suspend fun getDriverName(sessionKey: Int, driverNumber: Int): DriverNameTuple? // Return names or null
 }
+
+data class DriverNameTuple(val firstName: String, val lastName: String)
