@@ -16,6 +16,7 @@ import com.example.of1.data.model.openf1.OF1Driver
 import com.example.of1.data.model.openf1.TeamRadio // Make sure TeamRadio is imported
 import com.example.of1.databinding.ItemPositionBinding
 import com.example.of1.utils.AudioPlayerManager
+import androidx.core.graphics.toColorInt
 
 // Data class remains the same
 data class UiPosition(
@@ -64,11 +65,18 @@ class PositionListAdapter : ListAdapter<UiPosition, PositionListAdapter.Position
                 binding.tvDriverName.text = driver.fullName
                 binding.tvTeamName.text = driver.teamName
                 binding.tvCountryCode.text = driver.countryCode ?: ""
-                Glide.with(binding.ivHeadshot.context).load(driver.headshotUrl)/*...*/.into(binding.ivHeadshot)
+                Glide.with(binding.ivHeadshot.context)
+                    .load(driver.headshotUrl) // Pass the potentially null URL
+                    .placeholder(R.drawable.ic_launcher_background) // Your general placeholder
+                    .error(R.drawable.no_headshot) // Use your specific fallback drawable
+                    .fallback(R.drawable.no_headshot) // Use fallback if URL is null
+                    .into(binding.ivHeadshot)
                 try {
-                    binding.tvTeamColor.setBackgroundColor(Color.parseColor("#${driver.teamColour}"))
+                    binding.tvTeamColor.setBackgroundColor("#${driver.teamColour}".toColorInt())
                 } catch (e: Exception) { Log.e("PosVH", "Color parse error") }
-            } else { /* Clear fields */ }
+            } else {
+                binding.ivHeadshot.setImageResource(R.drawable.no_headshot)
+            }
 
 
             // --- Set Item Click Listener for Navigation ---

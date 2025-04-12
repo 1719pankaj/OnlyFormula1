@@ -8,11 +8,13 @@ data class DriverEntity(
     @PrimaryKey
     val driverNumber: Int,
     val broadcastName: String,
-    val countryCode: String?, // Make nullable
+    val countryCode: String?,
     val fullName: String,
-    val headshotUrl: String,
+    val headshotUrl: String?, // <-- Make Nullable
     val teamColour: String,
     val teamName: String,
     val sessionKey: Int,
-    val meetingKey: Int
+    val meetingKey: Int,
+    val firstName: String, // Add firstName
+    val lastName: String   // Add lastName
 )

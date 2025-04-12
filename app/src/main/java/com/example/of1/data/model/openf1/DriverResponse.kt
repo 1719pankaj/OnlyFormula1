@@ -6,10 +6,10 @@ data class OF1DriverResponse(
     @SerializedName("session_key") val sessionKey: Int,
     @SerializedName("meeting_key") val meetingKey: Int,
     @SerializedName("broadcast_name") val broadcastName: String,
-    @SerializedName("country_code") val countryCode: String?, // Make nullable in the API response model too
+    @SerializedName("country_code") val countryCode: String?,
     @SerializedName("first_name") val firstName: String,
     @SerializedName("full_name") val fullName: String,
-    @SerializedName("headshot_url") val headshotUrl: String,
+    @SerializedName("headshot_url") val headshotUrl: String?, // <-- Make Nullable
     @SerializedName("last_name") val lastName: String,
     @SerializedName("driver_number") val driverNumber: Int,
     @SerializedName("team_colour") val teamColour: String,
@@ -17,13 +17,15 @@ data class OF1DriverResponse(
     @SerializedName("name_acronym") val nameAcronym: String
 )
 
-//Create common Model
+// Common Model
 data class OF1Driver(
     val broadcastName: String,
-    val countryCode: String?, // Make nullable
+    val countryCode: String?,
     val fullName: String,
-    val headshotUrl: String,
+    val headshotUrl: String?, // <-- Make Nullable
     val driverNumber: Int,
     val teamColour: String,
     val teamName: String,
+    val firstName: String, // Add firstName
+    val lastName: String   // Add lastName
 )
