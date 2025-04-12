@@ -21,40 +21,51 @@
         android:id="@+id/tv_driver_number"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginStart="8dp"
-        android:textSize="18sp"
-        app:layout_constraintBaseline_toBaselineOf="@+id/tv_position"
-        app:layout_constraintStart_toEndOf="@+id/tv_position"
+        android:layout_marginStart="4dp"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        app:layout_constraintBottom_toBottomOf="@+id/tv_driver_name"
+        app:layout_constraintStart_toEndOf="@+id/tv_driver_name"
+        app:layout_constraintTop_toTopOf="@+id/iv_headshot_card"
         tools:text="#44" />
 
-    <ImageView
-        android:id="@+id/iv_headshot"
-        android:layout_width="50dp"
-        android:layout_height="50dp"
-        android:layout_marginTop="8dp"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/tv_position"
-        tools:srcCompat="@tools:sample/avatars"
-        android:contentDescription="driver headshot" />
+    <androidx.cardview.widget.CardView
+        android:id="@+id/iv_headshot_card"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        app:cardCornerRadius="8dp"
+        app:layout_constraintStart_toEndOf="@+id/tv_position"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <ImageView
+            android:id="@+id/iv_headshot"
+            android:layout_width="75dp"
+            android:layout_height="75dp"
+            android:layout_marginStart="6dp"
+            android:layout_marginTop="6dp"
+            android:layout_marginEnd="6dp"
+            android:contentDescription="driver headshot"
+            tools:srcCompat="@tools:sample/avatars" />
+    </androidx.cardview.widget.CardView>
+
+
 
     <TextView
         android:id="@+id/tv_driver_name"
-        android:layout_width="0dp"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="8dp"
         android:textSize="16sp"
-        android:textStyle="bold"
-        app:layout_constraintEnd_toStartOf="@+id/btn_play_radio"
-        app:layout_constraintStart_toEndOf="@+id/iv_headshot"
-        app:layout_constraintTop_toTopOf="@+id/iv_headshot"
+        app:layout_constraintStart_toEndOf="@+id/iv_headshot_card"
+        app:layout_constraintTop_toTopOf="@+id/iv_headshot_card"
         tools:text="Lewis Hamilton" />
 
     <TextView
         android:id="@+id/tv_team_name"
-        android:layout_width="0dp"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="4dp"
-        app:layout_constraintEnd_toEndOf="@+id/tv_driver_name"
         app:layout_constraintStart_toStartOf="@+id/tv_driver_name"
         app:layout_constraintTop_toBottomOf="@+id/tv_driver_name"
         tools:text="Mercedes" />
@@ -63,33 +74,24 @@
         android:id="@+id/tv_country_code"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginEnd="8dp"
-        app:layout_constraintBottom_toBottomOf="@+id/iv_headshot"
-        app:layout_constraintEnd_toStartOf="@+id/tv_team_color"
+        app:layout_constraintBottom_toBottomOf="@+id/iv_headshot_card"
+        app:layout_constraintEnd_toEndOf="@+id/tv_position"
+        app:layout_constraintStart_toStartOf="@+id/tv_position"
         tools:text="GBR" />
 
-    <View
-        android:id="@+id/tv_team_color"
-        android:layout_width="50dp"
-        android:layout_height="50dp"
-        android:layout_marginTop="8dp"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/tv_position"
-        tools:background="#E80020" />
-
     <!-- Add the Play Button -->
-    <ImageButton
+    <TextView
         android:id="@+id/btn_play_radio"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:src="@drawable/ic_play"
         android:background="?attr/selectableItemBackgroundBorderless"
+        android:layout_marginTop="4dp"
         android:contentDescription="Play Latest Radio"
+        android:drawableEnd="@drawable/ic_play"
+        android:text="Radio Message"
         android:visibility="gone"
-        tools:visibility="visible"
-        app:layout_constraintEnd_toStartOf="@+id/tv_team_color"
-        app:layout_constraintTop_toTopOf="@+id/tv_driver_name"
-        app:layout_constraintBottom_toBottomOf="@+id/tv_team_name"
-        android:layout_marginEnd="8dp"/>
+        app:layout_constraintStart_toStartOf="@+id/tv_team_name"
+        app:layout_constraintTop_toBottomOf="@+id/tv_team_name"
+        tools:visibility="visible" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
