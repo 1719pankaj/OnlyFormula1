@@ -17,10 +17,12 @@ import com.example.of1.data.remote.JolpicaApiService
 import com.example.of1.data.remote.OpenF1ApiService
 import com.example.of1.data.repository.CarDataRepository
 import com.example.of1.data.repository.DriverRepository
+import com.example.of1.data.repository.IntervalRepository
 import com.example.of1.data.repository.LapRepository
 import com.example.of1.data.repository.MeetingRepository
 import com.example.of1.data.repository.PitStopRepository
 import com.example.of1.data.repository.PositionRepository
+import com.example.of1.data.repository.RaceControlRepository
 import com.example.of1.data.repository.RaceRepository
 import com.example.of1.data.repository.ResultRepository
 import com.example.of1.data.repository.SeasonRepository
@@ -224,6 +226,19 @@ object AppModule {
     @Singleton
     fun provideTeamRadioRepository(apiService: OpenF1ApiService, teamRadioDao: TeamRadioDao): TeamRadioRepository {
         return TeamRadioRepository(apiService, teamRadioDao)
+    }
+
+    @Provides
+    @Singleton
+    fun provideIntervalRepository(apiService: OpenF1ApiService): IntervalRepository {
+        return IntervalRepository(apiService)
+    }
+
+    // ADD Provider for RaceControlRepository
+    @Provides
+    @Singleton
+    fun provideRaceControlRepository(apiService: OpenF1ApiService): RaceControlRepository {
+        return RaceControlRepository(apiService)
     }
 }
 
