@@ -107,24 +107,32 @@ jobs:
         id: get_version
         # Set only the env vars needed for signing, NOT the file path
         env:
-          DEBUG_KEYSTORE_PASSWORD: ${{ secrets.DEBUG_KEYSTORE_PASSWORD }}
+          DEBUG_STORE_PASSWORD: ${{ secrets.DEBUG_STORE_PASSWORD }}
           DEBUG_KEY_ALIAS: ${{ secrets.DEBUG_KEY_ALIAS }}
           DEBUG_KEY_PASSWORD: ${{ secrets.DEBUG_KEY_PASSWORD }}
-          # *** REMOVED DEBUG_STORE_FILE ***
         run: |
           Write-Host "Attempting to get version name..."
-          # Run gradle; Gradle will find the keystore at the default location
-          $versionOutput = ./gradlew.bat :app:printVersionName -q --no-daemon 2>&1
+          # Run gradle; Capture ONLY standard output (remove 2>&1)
+          # Errors like download progress (often on stderr) will be ignored for capture
+          $versionOutput = ./gradlew.bat :app:printVersionName -q --no-daemon
+
+          # Check exit code FIRST. If the task failed, $versionOutput might be irrelevant.
           if ($LASTEXITCODE -ne 0) {
-            Write-Error "Gradle task printVersionName failed. Output/Error: $versionOutput"
+            # Log the potentially messy output IF the task failed, for debugging.
+            Write-Error "Gradle task printVersionName failed with exit code $LASTEXITCODE. Full output/Error: $versionOutput"
             exit 1
           }
+
+          # If the task succeeded (exit code 0), proceed to process the output
           $version = $versionOutput.Trim()
           if ([string]::IsNullOrEmpty($version)) {
-             Write-Error "Gradle task printVersionName produced empty output!"
+             Write-Error "Gradle task printVersionName succeeded but produced empty output!"
+             # You might want to log $versionOutput here too in case it contained unexpected success messages
+             # Write-Host "Raw output that was trimmed: '$versionOutput'"
              exit 1
           }
-          Write-Host "Raw version output: '$version'"
+
+          Write-Host "Raw version output captured (stdout only): '$version'"
           echo "version_name=$version" >> $env:GITHUB_OUTPUT
           Write-Host "Set version_name output variable to: '$version'"
 
