@@ -72,7 +72,7 @@ class PositionListAdapter : ListAdapter<UiPosition, PositionListAdapter.Position
                     .fallback(R.drawable.no_headshot) // Use fallback if URL is null
                     .into(binding.ivHeadshot)
                 try {
-                    binding.tvTeamColor.setBackgroundColor("#${driver.teamColour}".toColorInt())
+                    binding.ivHeadshotCard.setCardBackgroundColor("#${driver.teamColour}".toColorInt())
                 } catch (e: Exception) { Log.e("PosVH", "Color parse error") }
             } else {
                 binding.ivHeadshot.setImageResource(R.drawable.no_headshot)
@@ -91,9 +91,9 @@ class PositionListAdapter : ListAdapter<UiPosition, PositionListAdapter.Position
 
                 // Set icon based on AudioPlayerManager state
                 if (AudioPlayerManager.currentUrl == latestRadio.recordingUrl && AudioPlayerManager.isPlaying) {
-                    binding.btnPlayRadio.setImageResource(R.drawable.ic_stop)
+                    binding.btnPlayRadio.setCompoundDrawablesWithIntrinsicBounds(0, 0, R.drawable.ic_stop, 0)
                 } else {
-                    binding.btnPlayRadio.setImageResource(R.drawable.ic_play)
+                    binding.btnPlayRadio.setCompoundDrawablesWithIntrinsicBounds(0, 0, R.drawable.ic_play, 0)
                 }
 
                 // Set radio button click listener
