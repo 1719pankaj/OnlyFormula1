@@ -1,5 +1,3 @@
-# .github/workflows/android-ci-cd.yml
-
 name: Android CI/CD Debug Build & Release
 
 on:
@@ -7,133 +5,73 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
-# Permissions needed:
-# contents: write - to create tags and releases
-# actions: read - potentially needed by caching action (good practice)
 permissions:
   contents: write
-  actions: read
 
 jobs:
   build-and-release:
     runs-on: windows-latest
 
     steps:
-      # 1. Checkout code - Fetch full history for git log
       - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0 # Fetch all history for git log
 
-      # 2. Set up Gradle (Explicitly setting Java 17)
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v3
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
         with:
-          # Explicitly tell the action to set up Java 17
           java-version: '17'
-          # Optional: Specify Java distribution (Temurin is a good choice)
-          java-distribution: 'temurin'
-        # action automatically configures gradle-user-home cache by default
+          distribution: 'temurin'
 
-      # 3. Decode Keystore (Simplified)
-      - name: Decode Keystore
+      - name: Setup debug.keystore
         env:
           DEBUG_KEYSTORE_BASE64: ${{ secrets.DEBUG_KEYSTORE_BASE64 }}
+          DEBUG_KEYSTORE_PASSWORD: ${{ secrets.DEBUG_KEYSTORE_PASSWORD }}
         run: |
           $keystoreDir = Join-Path $HOME ".android"
           New-Item -ItemType Directory -Force -Path $keystoreDir
           $keystorePath = Join-Path $keystoreDir "debug.keystore"
-          $base64 = $env:DEBUG_KEYSTORE_BASE64
-          if (-not [string]::IsNullOrEmpty($base64)) {
-            try {
-              $bytes = [System.Convert]::FromBase64String($base64)
-              [System.IO.File]::WriteAllBytes($keystorePath, $bytes)
-              Write-Host "Keystore file written to $keystorePath"
-            } catch {
-              Write-Error "Failed to decode or write keystore: $($_.Exception.Message)"
-              exit 1
-            }
-          } else {
-            Write-Error "DEBUG_KEYSTORE_BASE64 secret is empty!"
+          $bytes = [System.Convert]::FromBase64String($env:DEBUG_KEYSTORE_BASE64)
+          [System.IO.File]::WriteAllBytes($keystorePath, $bytes)
+          
+          # Validate keystore with keytool
+          $keytoolPath = Join-Path $env:JAVA_HOME "bin\keytool.exe"
+          $command = "& `"$keytoolPath`" -list -v -keystore `"$keystorePath`" -storepass `"$env:DEBUG_KEYSTORE_PASSWORD`" -noprompt"
+          Invoke-Expression $command | Out-Null
+          if ($LASTEXITCODE -ne 0) {
             exit 1
           }
 
-      # 4. Grant execute permission for gradlew (Still good practice)
       - name: Grant execute permission for gradlew
         run: chmod +x ./gradlew
 
-      # 5. Get Version Name (Cleaned up logging)
       - name: Get Version Name
         id: get_version
         env:
-          # Signing secrets needed if printVersionName task requires project evaluation
-          DEBUG_KEYSTORE_PASSWORD: ${{ secrets.DEBUG_KEYSTORE_PASSWORD }}
+          DEBUG_STORE_PASSWORD: ${{ secrets.DEBUG_STORE_PASSWORD }}
           DEBUG_KEY_ALIAS: ${{ secrets.DEBUG_KEY_ALIAS }}
           DEBUG_KEY_PASSWORD: ${{ secrets.DEBUG_KEY_PASSWORD }}
         run: |
-          # Run gradle using the command set up by gradle/actions/setup-gradle
-          $rawOutput = gradle :app:printVersionName -q --no-daemon 2>&1
-
+          $rawOutput = ./gradlew.bat :app:printVersionName -q --no-daemon 2>&1
           if ($LASTEXITCODE -ne 0) {
-            # The error message already includes $rawOutput
-            Write-Error "Gradle task printVersionName failed with exit code $LASTEXITCODE."
             exit 1
           }
           $parts = $rawOutput.Trim().Split([char[]]' ', [System.StringSplitOptions]::RemoveEmptyEntries)
-          if ($parts.Length -eq 0) {
-            Write-Error "Gradle task succeeded but splitting output resulted in zero parts. Raw output: '$rawOutput'"
-            exit 1
-          }
           $version = $parts[-1]
-          if ([string]::IsNullOrEmpty($version)) {
-             Write-Error "Extracted version is empty!"
-             exit 1
-          }
           echo "version_name=$version" >> $env:GITHUB_OUTPUT
-          Write-Host "Version name set to: $version"
 
-      # 6. Get Latest Commit Message
-      - name: Get Latest Commit Message
-        id: get_commit_message
-        run: |
-          # Get full commit message body, replace characters problematic for JSON/env vars
-          $commitMessage = git log -1 --pretty=%B
-          # Escape backticks, newlines, double quotes for setting output
-          $commitMessage = $commitMessage -replace '`','``' -replace '\r?\n','`n' -replace '"','`"'
-          echo "commit_message=$commitMessage" >> $env:GITHUB_OUTPUT
-          Write-Host "Commit message captured."
-
-
-      # 7. Clean Build Cache (Optional but sometimes helpful)
-      - name: Clean Build Outputs
-        # Use 'gradle' command provided by setup-gradle action
-        run: gradle clean --no-daemon
-
-      # 8. Build Debug APK (Cleaned up, using 'gradle')
       - name: Build Debug APK
         env:
-          # Pass signing secrets to the build
           DEBUG_KEYSTORE_PASSWORD: ${{ secrets.DEBUG_KEYSTORE_PASSWORD }}
           DEBUG_KEY_ALIAS: ${{ secrets.DEBUG_KEY_ALIAS }}
           DEBUG_KEY_PASSWORD: ${{ secrets.DEBUG_KEY_PASSWORD }}
-        # Use 'gradle' command provided by setup-gradle action
-        # Keep --stacktrace for build debugging
-        run: gradle assembleDebug --no-daemon --stacktrace
+        run: ./gradlew.bat assembleDebug --no-daemon
 
-      # 9. Create Git Tag (Cleaned up logging)
       - name: Create Git Tag
         run: |
           $tagName = "${{ steps.get_version.outputs.version_name }}"
-          Write-Host "Attempting to create and push tag: $tagName"
           git tag $tagName
           git push origin $tagName
-          if ($LASTEXITCODE -ne 0) {
-            Write-Warning "Tag push failed for '$tagName'. It might already exist." # Changed to warning
-          } else {
-            Write-Host "Successfully pushed tag $tagName"
-          }
 
-      # 10. Create GitHub Release (Using commit message)
       - name: Create GitHub Release
         id: create_release
         uses: actions/create-release@v1
@@ -142,12 +80,11 @@ jobs:
         with:
           tag_name: ${{ steps.get_version.outputs.version_name }}
           release_name: Release ${{ steps.get_version.outputs.version_name }}
-          # Use the captured commit message as the body
-          body: ${{ steps.get_commit_message.outputs.commit_message }}
+          body: |
+            Debug build for version ${{ steps.get_version.outputs.version_name }}
           draft: false
-          prerelease: true # Still a debug build
+          prerelease: true
 
-      # 11. Upload Debug APK to Release
       - name: Upload Debug APK to Release
         uses: actions/upload-release-asset@v1
         env:
@@ -155,6 +92,5 @@ jobs:
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
           asset_path: ./app/build/outputs/apk/debug/app-debug.apk
-          # Use the version name in the uploaded asset name
           asset_name: app-debug-${{ steps.get_version.outputs.version_name }}.apk
           asset_content_type: application/vnd.android.package-archive
