@@ -47,7 +47,7 @@ jobs:
       - name: Get Version Name
         id: get_version
         env:
-          DEBUG_STORE_PASSWORD: ${{ secrets.DEBUG_STORE_PASSWORD }}
+          DEBUG_KEYSTORE_PASSWORD: ${{ secrets.DEBUG_KEYSTORE_PASSWORD }}
           DEBUG_KEY_ALIAS: ${{ secrets.DEBUG_KEY_ALIAS }}
           DEBUG_KEY_PASSWORD: ${{ secrets.DEBUG_KEY_PASSWORD }}
         run: |
