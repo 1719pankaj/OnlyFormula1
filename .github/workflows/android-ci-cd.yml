@@ -105,34 +105,45 @@ jobs:
 
       - name: Get Version Name
         id: get_version
-        # Set only the env vars needed for signing, NOT the file path
         env:
           DEBUG_STORE_PASSWORD: ${{ secrets.DEBUG_STORE_PASSWORD }}
           DEBUG_KEY_ALIAS: ${{ secrets.DEBUG_KEY_ALIAS }}
           DEBUG_KEY_PASSWORD: ${{ secrets.DEBUG_KEY_PASSWORD }}
         run: |
-          Write-Host "Attempting to get version name..."
-          # Run gradle; Capture ONLY standard output (remove 2>&1)
-          # Errors like download progress (often on stderr) will be ignored for capture
-          $versionOutput = ./gradlew.bat :app:printVersionName -q --no-daemon
+          Write-Host "Attempting to get version name by running printVersionName..."
+          # Run gradle, capture ALL output (stdout & stderr, just in case)
+          $rawOutput = ./gradlew.bat :app:printVersionName -q --no-daemon 2>&1
 
-          # Check exit code FIRST. If the task failed, $versionOutput might be irrelevant.
+          # Check exit code FIRST.
           if ($LASTEXITCODE -ne 0) {
-            # Log the potentially messy output IF the task failed, for debugging.
-            Write-Error "Gradle task printVersionName failed with exit code $LASTEXITCODE. Full output/Error: $versionOutput"
+            Write-Error "Gradle task printVersionName failed with exit code $LASTEXITCODE. Full output/Error: $rawOutput"
             exit 1
           }
 
-          # If the task succeeded (exit code 0), proceed to process the output
-          $version = $versionOutput.Trim()
+          # If task succeeded, process the output:
+          Write-Host "Raw output from printVersionName: '$rawOutput'"
+          # Trim whitespace, then split by space, get the last non-empty element
+          $parts = $rawOutput.Trim().Split([char[]]' ', [System.StringSplitOptions]::RemoveEmptyEntries)
+
+          if ($parts.Length -eq 0) {
+            Write-Error "Gradle task succeeded but splitting the output resulted in zero parts. Raw output: '$rawOutput'"
+            exit 1
+          }
+
+          # Assume the version name is the last part
+          $version = $parts[-1]
+          Write-Host "Extracted last part as version: '$version'"
+
+          # Basic sanity check (optional: adjust regex if needed for your version format)
+          if (-not ($version -match "^\d+(\.\d+)*([\w-]*)$")) {
+             Write-Warning "Warning: Extracted version '$version' might not look like a standard version number."
+          }
+
           if ([string]::IsNullOrEmpty($version)) {
-             Write-Error "Gradle task printVersionName succeeded but produced empty output!"
-             # You might want to log $versionOutput here too in case it contained unexpected success messages
-             # Write-Host "Raw output that was trimmed: '$versionOutput'"
+             Write-Error "Extracted version is empty!"
              exit 1
           }
 
-          Write-Host "Raw version output captured (stdout only): '$version'"
           echo "version_name=$version" >> $env:GITHUB_OUTPUT
           Write-Host "Set version_name output variable to: '$version'"
 
