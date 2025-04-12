@@ -1,4 +1,5 @@
 # .github/workflows/android-ci-cd.yml
+
 name: Android CI/CD Debug Build & Release
 
 on:
@@ -6,6 +7,9 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
+# Permissions needed:
+# contents: write - to create tags and releases
+# actions: read - potentially needed by caching action (good practice)
 permissions:
   contents: write
   actions: read
@@ -21,9 +25,14 @@ jobs:
         with:
           fetch-depth: 0 # Fetch all history for git log
 
-      # 2. Set up Gradle (handles Java, caching, and provides 'gradle' command)
+      # 2. Set up Gradle (Explicitly setting Java 17)
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v3
+        with:
+          # Explicitly tell the action to set up Java 17
+          java-version: '17'
+          # Optional: Specify Java distribution (Temurin is a good choice)
+          java-distribution: 'temurin'
         # action automatically configures gradle-user-home cache by default
 
       # 3. Decode Keystore (Simplified)
@@ -49,7 +58,7 @@ jobs:
             exit 1
           }
 
-      # 4. Grant execute permission for gradlew (Still good practice, even if using 'gradle')
+      # 4. Grant execute permission for gradlew (Still good practice)
       - name: Grant execute permission for gradlew
         run: chmod +x ./gradlew
 
@@ -58,7 +67,7 @@ jobs:
         id: get_version
         env:
           # Signing secrets needed if printVersionName task requires project evaluation
-          DEBUG_KEYSTORE_PASSWORD: ${{ secrets.DEBUG_KEYSTORE_PASSWORD }}
+          DEBUG_STORE_PASSWORD: ${{ secrets.DEBUG_STORE_PASSWORD }}
           DEBUG_KEY_ALIAS: ${{ secrets.DEBUG_KEY_ALIAS }}
           DEBUG_KEY_PASSWORD: ${{ secrets.DEBUG_KEY_PASSWORD }}
         run: |
@@ -66,7 +75,8 @@ jobs:
           $rawOutput = gradle :app:printVersionName -q --no-daemon 2>&1
 
           if ($LASTEXITCODE -ne 0) {
-            Write-Error "Gradle task printVersionName failed. Output/Error: $rawOutput"
+            # The error message already includes $rawOutput
+            Write-Error "Gradle task printVersionName failed with exit code $LASTEXITCODE."
             exit 1
           }
           $parts = $rawOutput.Trim().Split([char[]]' ', [System.StringSplitOptions]::RemoveEmptyEntries)
@@ -103,7 +113,7 @@ jobs:
       - name: Build Debug APK
         env:
           # Pass signing secrets to the build
-          DEBUG_KEYSTORE_PASSWORD: ${{ secrets.DEBUG_KEYSTORE_PASSWORD }}
+          DEBUG_STORE_PASSWORD: ${{ secrets.DEBUG_STORE_PASSWORD }}
           DEBUG_KEY_ALIAS: ${{ secrets.DEBUG_KEY_ALIAS }}
           DEBUG_KEY_PASSWORD: ${{ secrets.DEBUG_KEY_PASSWORD }}
         # Use 'gradle' command provided by setup-gradle action
