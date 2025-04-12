@@ -1,121 +1,277 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:padding="8dp">
+    android:backgroundTint="@color/white"
+    android:layout_marginStart="8dp"
+    android:layout_marginTop="4dp"
+    android:layout_marginEnd="8dp"
+    android:layout_marginBottom="4dp"
+    app:cardElevation="2dp">
 
-    <TextView
-        android:id="@+id/tv_lap_number"
-        android:layout_width="wrap_content"
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:textStyle="bold"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        tools:text="Lap 1" />
+        android:padding="12dp">
 
-    <TextView
-        android:id="@+id/tv_lap_time"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="8dp"
-        app:layout_constraintBaseline_toBaselineOf="@+id/tv_lap_number"
-        app:layout_constraintStart_toEndOf="@+id/tv_lap_number"
-        tools:text="1:30.123" />
+        <!-- Row 1: Lap Number and Lap Time -->
+        <TextView
+            android:id="@+id/tv_lap_number_label"
+            style="?attr/textAppearanceLabelSmall"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Lap"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
 
-    <TextView
-        android:id="@+id/tv_sector_1"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/tv_lap_number"
-        tools:text="S1: 25.591" />
+        <TextView
+            android:id="@+id/tv_lap_number"
+            style="?attr/textAppearanceTitleMedium"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textStyle="bold"
+            app:layout_constraintStart_toStartOf="@+id/tv_lap_number_label"
+            app:layout_constraintTop_toBottomOf="@+id/tv_lap_number_label"
+            tools:text="58" />
 
-    <TextView
-        android:id="@+id/tv_sector_2"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="8dp"
-        app:layout_constraintBaseline_toBaselineOf="@+id/tv_sector_1"
-        app:layout_constraintStart_toEndOf="@+id/tv_sector_1"
-        tools:text="S2: 28.731" />
+        <TextView
+            android:id="@+id/tv_lap_time"
+            style="?attr/textAppearanceTitleMedium"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="8dp"
+            app:layout_constraintBaseline_toBaselineOf="@+id/tv_lap_number"
+            app:layout_constraintEnd_toEndOf="parent"
+            tools:text="1:28.345" />
 
-    <TextView
-        android:id="@+id/tv_sector_3"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="8dp"
-        app:layout_constraintBaseline_toBaselineOf="@+id/tv_sector_2"
-        app:layout_constraintStart_toEndOf="@+id/tv_sector_2"
-        tools:text="S3: 41.109" />
-    <TextView
-        android:id="@+id/tv_driver_number"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="8dp"
-        app:layout_constraintBaseline_toBaselineOf="@+id/tv_sector_3"
-        app:layout_constraintStart_toEndOf="@+id/tv_sector_3"
-        tools:text="#44" />
+        <TextView
+            android:id="@+id/tv_lap_time_label"
+            style="?attr/textAppearanceLabelSmall"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Lap Time"
+            app:layout_constraintBottom_toTopOf="@+id/tv_lap_time"
+            app:layout_constraintEnd_toEndOf="@+id/tv_lap_time" />
 
-    <TextView
-        android:id="@+id/tv_i1_speed"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/tv_sector_1"
-        tools:text="I1: 280" />
 
-    <TextView
-        android:id="@+id/tv_i2_speed"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="8dp"
-        app:layout_constraintBaseline_toBaselineOf="@+id/tv_i1_speed"
-        app:layout_constraintStart_toEndOf="@+id/tv_i1_speed"
-        tools:text="I2: 275" />
+        <!-- Divider -->
+        <View
+            android:id="@+id/divider1"
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_marginTop="8dp"
+            android:background="?android:attr/listDivider"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/tv_lap_number" />
 
-    <TextView
-        android:id="@+id/tv_st_speed"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="8dp"
-        app:layout_constraintBaseline_toBaselineOf="@+id/tv_i2_speed"
-        app:layout_constraintStart_toEndOf="@+id/tv_i2_speed"
-        tools:text="ST: 312" />
+        <!-- Row 2: Sector Times -->
+        <TextView
+            android:id="@+id/tv_sector_1_label"
+            style="?attr/textAppearanceLabelMedium"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:gravity="center_horizontal"
+            android:text="Sector 1"
+            app:layout_constraintEnd_toStartOf="@+id/tv_sector_2_label"
+            app:layout_constraintHorizontal_chainStyle="spread_inside"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/divider1" />
 
-    <Button
-        android:id="@+id/btn_car_data"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Car Data"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        <TextView
+            android:id="@+id/tv_sector_1"
+            style="?attr/textAppearanceBodyMedium"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:paddingBottom="2dp"
+            app:layout_constraintEnd_toEndOf="@+id/tv_sector_1_label"
+            app:layout_constraintStart_toStartOf="@+id/tv_sector_1_label"
+            app:layout_constraintTop_toBottomOf="@+id/tv_sector_1_label"
+            tools:text="25.591s" />
 
-    <ImageView
-        android:id="@+id/iv_pit_stop_icon"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:src="@drawable/ic_garage"
-        android:layout_marginTop="4dp"
-        android:visibility="gone"
-        tools:visibility="visible"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/tv_i1_speed"
-        android:contentDescription="Pit Stop" />
+        <TextView
+            android:id="@+id/tv_sector_2_label"
+            style="?attr/textAppearanceLabelMedium"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:gravity="center_horizontal"
+            android:text="Sector 2"
+            app:layout_constraintBaseline_toBaselineOf="@+id/tv_sector_1_label"
+            app:layout_constraintEnd_toStartOf="@+id/tv_sector_3_label"
+            app:layout_constraintStart_toEndOf="@+id/tv_sector_1_label" />
 
-    <TextView
-        android:id="@+id/tv_pit_time"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="8dp"
-        android:visibility="gone"
-        app:layout_constraintBottom_toBottomOf="@+id/iv_pit_stop_icon"
-        app:layout_constraintStart_toEndOf="@+id/iv_pit_stop_icon"
-        app:layout_constraintTop_toTopOf="@+id/iv_pit_stop_icon"
-        tools:text="Pit: 22.3s"
-        tools:visibility="visible" />
+        <TextView
+            android:id="@+id/tv_sector_2"
+            style="?attr/textAppearanceBodyMedium"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:paddingBottom="2dp"
+            app:layout_constraintEnd_toEndOf="@+id/tv_sector_2_label"
+            app:layout_constraintStart_toStartOf="@+id/tv_sector_2_label"
+            app:layout_constraintTop_toBottomOf="@+id/tv_sector_2_label"
+            tools:text="28.731s" />
 
-</androidx.constraintlayout.widget.ConstraintLayout>
+        <TextView
+            android:id="@+id/tv_sector_3_label"
+            style="?attr/textAppearanceLabelMedium"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:gravity="center_horizontal"
+            android:text="Sector 3"
+            app:layout_constraintBaseline_toBaselineOf="@+id/tv_sector_2_label"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toEndOf="@+id/tv_sector_2_label" />
+
+        <TextView
+            android:id="@+id/tv_sector_3"
+            style="?attr/textAppearanceBodyMedium"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:paddingBottom="2dp"
+            app:layout_constraintEnd_toEndOf="@+id/tv_sector_3_label"
+            app:layout_constraintStart_toStartOf="@+id/tv_sector_3_label"
+            app:layout_constraintTop_toBottomOf="@+id/tv_sector_3_label"
+            tools:text="41.109s" />
+
+        <!-- Barrier to align speeds below sectors -->
+        <androidx.constraintlayout.widget.Barrier
+            android:id="@+id/sector_barrier"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:barrierDirection="bottom"
+            app:constraint_referenced_ids="tv_sector_1,tv_sector_2,tv_sector_3" />
+
+        <!-- Row 3: Speeds -->
+        <TextView
+            android:id="@+id/tv_i1_speed_label"
+            style="?attr/textAppearanceLabelMedium"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:gravity="center_horizontal"
+            android:text="Inter 1"
+            app:layout_constraintEnd_toStartOf="@+id/tv_i2_speed_label"
+            app:layout_constraintHorizontal_chainStyle="spread_inside"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/sector_barrier" />
+
+        <TextView
+            android:id="@+id/tv_i1_speed"
+            style="?attr/textAppearanceBodyMedium"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:layout_constraintEnd_toEndOf="@+id/tv_i1_speed_label"
+            app:layout_constraintStart_toStartOf="@+id/tv_i1_speed_label"
+            app:layout_constraintTop_toBottomOf="@+id/tv_i1_speed_label"
+            tools:text="280 Km/h" />
+
+        <TextView
+            android:id="@+id/tv_i2_speed_label"
+            style="?attr/textAppearanceLabelMedium"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:gravity="center_horizontal"
+            android:text="Inter 2"
+            app:layout_constraintBaseline_toBaselineOf="@+id/tv_i1_speed_label"
+            app:layout_constraintEnd_toStartOf="@+id/tv_st_speed_label"
+            app:layout_constraintStart_toEndOf="@+id/tv_i1_speed_label" />
+
+        <TextView
+            android:id="@+id/tv_i2_speed"
+            style="?attr/textAppearanceBodyMedium"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:layout_constraintEnd_toEndOf="@+id/tv_i2_speed_label"
+            app:layout_constraintStart_toStartOf="@+id/tv_i2_speed_label"
+            app:layout_constraintTop_toBottomOf="@+id/tv_i2_speed_label"
+            tools:text="275 Km/h" />
+
+        <TextView
+            android:id="@+id/tv_st_speed_label"
+            style="?attr/textAppearanceLabelMedium"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:gravity="center_horizontal"
+            android:text="Speed Trap"
+            app:layout_constraintBaseline_toBaselineOf="@+id/tv_i2_speed_label"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toEndOf="@+id/tv_i2_speed_label" />
+
+        <TextView
+            android:id="@+id/tv_st_speed"
+            style="?attr/textAppearanceBodyMedium"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:layout_constraintEnd_toEndOf="@+id/tv_st_speed_label"
+            app:layout_constraintStart_toStartOf="@+id/tv_st_speed_label"
+            app:layout_constraintTop_toBottomOf="@+id/tv_st_speed_label"
+            tools:text="312 Km/h" />
+
+        <androidx.constraintlayout.widget.Barrier
+            android:id="@+id/speed_barrier"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:barrierDirection="bottom"
+            app:constraint_referenced_ids="tv_i1_speed,tv_i2_speed,tv_st_speed" />
+
+        <!-- Row 4: Pit Stop Info and Car Data Button -->
+        <ImageView
+            android:id="@+id/iv_pit_stop_icon"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:layout_marginTop="10dp"
+            android:contentDescription="Pit Stop"
+            android:src="@drawable/ic_garage"
+            android:visibility="gone"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/speed_barrier"
+            app:tint="?attr/colorOnSurfaceVariant"
+            tools:visibility="visible" />
+
+        <TextView
+            android:id="@+id/tv_pit_time"
+            style="?attr/textAppearanceBodySmall"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="4dp"
+            android:visibility="gone"
+            app:layout_constraintBottom_toBottomOf="@+id/iv_pit_stop_icon"
+            app:layout_constraintStart_toEndOf="@+id/iv_pit_stop_icon"
+            app:layout_constraintTop_toTopOf="@+id/iv_pit_stop_icon"
+            tools:text="Pit: 22.3s"
+            tools:visibility="visible" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_car_data"
+            style="?attr/materialButtonOutlinedStyle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:minHeight="0dp"
+            android:paddingTop="6dp"
+            android:paddingBottom="6dp"
+            android:text="Car Data"
+            android:textAppearance="?attr/textAppearanceLabelSmall"
+            app:icon="@drawable/ic_graph"
+            app:iconGravity="textStart"
+            app:iconPadding="4dp"
+            app:iconSize="16dp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/speed_barrier" />
+
+        <!-- Hidden Driver Number (still needed for adapter logic) -->
+        <TextView
+            android:id="@+id/tv_driver_number"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:visibility="gone"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            tools:text="#44" />
+
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+</com.google.android.material.card.MaterialCardView>

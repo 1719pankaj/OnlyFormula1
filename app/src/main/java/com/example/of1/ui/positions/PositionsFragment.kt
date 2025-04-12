@@ -14,8 +14,9 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView // Import RecyclerView
 import com.example.of1.databinding.FragmentPositionsBinding
-import com.example.of1.utils.AudioPlayerManager // Import AudioPlayerManager
+import com.example.of1.utils.AudioPlayerManager
 import com.example.of1.utils.Resource
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.collectLatest
@@ -28,6 +29,7 @@ class PositionsFragment : Fragment() {
     private lateinit var binding: FragmentPositionsBinding
     private val viewModel: PositionsViewModel by viewModels()
     private lateinit var positionAdapter: PositionListAdapter
+    private lateinit var raceControlAdapter: RaceControlAdapter // Add adapter for RC
     private val args: PositionsFragmentArgs by navArgs()
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
@@ -38,118 +40,155 @@ class PositionsFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        val meetingKey = args.meetingKey
-        val sessionKey = args.sessionKey
-        val isLive = args.isLive
+        setupRecyclerViews() // Renamed
+        observeUiUpdates()
+        observePlaybackState()
+        observeRaceControlMessages() // Add observer for RC messages
 
-        setupRecyclerView(args.isLive) // Pass isLive
-        observeUiUpdates() // Consolidated observer
-        observePlaybackState() // Keep this for radio button updates
-
+        // Initialize ViewModel which handles fetching based on isLive
         viewModel.getPositions(args.meetingKey, args.sessionKey, args.isLive)
     }
 
     override fun onResume() {
         super.onResume()
+        // ViewModel now handles the isLive check internally for starting polling
         if (args.isLive) {
-            viewModel.startPolling() // Start polling in onResume
+            viewModel.startPolling()
         }
     }
 
     override fun onPause() {
         super.onPause()
-        viewModel.stopPolling() // Stop polling in onPause
-        AudioPlayerManager.stop() // Stop audio when fragment pauses
+        viewModel.stopPolling()
+        AudioPlayerManager.stop()
     }
 
     override fun onDestroyView() {
         super.onDestroyView()
-        viewModel.stopPolling() // Also stop polling here
-        AudioPlayerManager.stop() // Ensure stopped on destruction
+        viewModel.stopPolling()
+        AudioPlayerManager.stop()
     }
 
 
-    private fun setupRecyclerView(isLive: Boolean) {
+    private fun setupRecyclerViews() { // Renamed
+        // Position Adapter Setup
         positionAdapter = PositionListAdapter()
-        // positionAdapter.setIsLive(isLive) // Removed
-
-        // Pass listeners directly to adapter instance
         positionAdapter.onPositionClick = { uiPosition ->
-            // ... (navigation to Laps) ...
             val action = PositionsFragmentDirections.actionPositionsFragmentToLapsFragment(
                 driverNumber = uiPosition.position.driverNumber,
                 meetingKey = uiPosition.position.meetingKey,
                 sessionKey = uiPosition.position.sessionKey,
-                isLive = args.isLive // Use the fragment's args.isLive
+                isLive = args.isLive
             )
             findNavController().navigate(action)
         }
         positionAdapter.onPlayRadioClick = { teamRadio ->
-            // ... (call AudioPlayerManager.play) ...
             AudioPlayerManager.play(requireContext(), teamRadio.recordingUrl)
-            // No need to notify adapter here, observePlaybackState handles it
         }
-
         binding.recyclerView.apply {
             layoutManager = LinearLayoutManager(context)
             adapter = positionAdapter
+            // Optional: Improve performance if item size doesn't change
+            // setHasFixedSize(true)
+        }
+
+        // Race Control Adapter Setup
+        raceControlAdapter = RaceControlAdapter()
+        binding.raceControlRecyclerView.apply {
+            layoutManager = LinearLayoutManager(context).apply {
+                // Stack from bottom might be more intuitive for incoming messages
+                // stackFromEnd = true
+                // reverseLayout = true // Consider if newest should be at bottom or top
+            }
+            adapter = raceControlAdapter
+            // Prevent nested scrolling issues if needed (usually not required here)
+            // isNestedScrollingEnabled = false
+            // Optional: Improve performance
+            setHasFixedSize(true) // Size changes based on content, maybe not fixed
+            itemAnimator = null // Disable default animations if they cause issues
         }
     }
 
-    // Consolidated observer for UI state and data
+    // Observe Race Control Messages
+    private fun observeRaceControlMessages() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.displayedRaceControlMessages.collectLatest { messages ->
+                    // Only show the RC recycler if live and messages exist
+                    val isVisible = args.isLive && messages.isNotEmpty()
+                    binding.raceControlRecyclerView.visibility = if (isVisible) View.VISIBLE else View.GONE
+
+                    // Only submit list if visible to potentially save resources
+                    if (isVisible) {
+                        Log.d("PositionsFragment", "Submitting ${messages.size} RC messages to adapter.")
+                        raceControlAdapter.submitList(messages)
+                        // Optional: Scroll to bottom/top when new messages arrive
+                        // if (messages.isNotEmpty()) {
+                        //    binding.raceControlRecyclerView.smoothScrollToPosition(messages.size - 1) // Scroll to bottom
+                        // }
+                    } else if (!args.isLive) {
+                        // Ensure it's hidden if not live, even if VM holds old messages briefly
+                        binding.raceControlRecyclerView.visibility = View.GONE
+                        // Optionally clear the adapter's list when not live
+                        // raceControlAdapter.submitList(emptyList())
+                    }
+
+                }
+            }
+        }
+    }
+
+
+    // Consolidated observer for Loading/Error states of primary data
     private fun observeUiUpdates() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
 
-                // --- Observer 1: Update the RecyclerView Adapter ---
+                // --- Observer 1: Update the Position RecyclerView Adapter ---
+                // (This remains unchanged)
                 launch {
                     viewModel.uiPositions.collectLatest { uiPositionsList ->
                         positionAdapter.submitList(uiPositionsList)
-                        Log.d("PositionsFragment", "Success: Submitted ${uiPositionsList.size} UI positions")
-                        // Hide progress bar ONLY if we successfully submitted non-empty data
-                        if (uiPositionsList.isNotEmpty()) {
-                            binding.progressBar.visibility = View.GONE
-                            Log.d("PositionsFragment", "Hiding progress bar because UI list is not empty.")
-                        }
-                        // If the list is empty, the loading state below will control the bar
+                        // Log.d("PositionsFragment", "Success: Submitted ${uiPositionsList.size} UI positions")
                     }
                 }
 
                 // --- Observer 2: Control Loading Indicator and Handle Errors ---
+                // (We'll keep intervals here for overall loading state, but RC errors are handled implicitly)
                 launch {
-                    // Combine the *Resource* states of essential data sources
-                    combine(viewModel.positions, viewModel.drivers) { posResource, driverResource ->
-                        // Determine overall loading state (show if *either* essential source is loading)
-                        val isLoading = posResource is Resource.Loading || driverResource is Resource.Loading
+                    combine(
+                        viewModel.positions,
+                        viewModel.drivers,
+                        viewModel.intervals
+                    ) { posResource, driverResource, intervalResource ->
+                        // Determine overall loading state for *primary* data
+                        val isLoading = (posResource is Resource.Loading && posResource.isLoading) ||
+                                (driverResource is Resource.Loading && driverResource.isLoading) ||
+                                (intervalResource is Resource.Loading && intervalResource.isLoading)
 
-                        // Determine if there's a critical error
-                        val errorResource = if (posResource is Resource.Error) posResource
-                        else if (driverResource is Resource.Error) driverResource // Prioritize position error?
-                        else null
+                        val errorResource = listOf(posResource, driverResource, intervalResource)
+                            .filterIsInstance<Resource.Error<*>>()
+                            .firstOrNull()
 
-                        Triple(isLoading, errorResource, viewModel.uiPositions.value.isNotEmpty()) // Pass loading, error, and if UI has data
-
-                    }.collectLatest { (isLoading, errorResource, hasUiData) ->
-
-                        if (errorResource != null) {
-                            // Handle error (show message, potentially hide loading)
-                            handleResourceError(if (viewModel.positions.value is Resource.Error) "Position" else "Driver", errorResource.message)
-                            binding.progressBar.visibility = View.GONE // Hide on error
-                            Log.d("PositionsFragment", "Error occurred, hiding progress bar.")
-                        } else if (isLoading && !hasUiData) {
-                            // Show loading only if actually loading AND UI isn't populated yet
-                            binding.progressBar.visibility = View.VISIBLE
-                            Log.d("PositionsFragment", "Showing progress bar (Loading: $isLoading, HasData: $hasUiData)")
-                        } else if (!isLoading && hasUiData) {
-                            // Hide loading if not loading AND we have data
-                            binding.progressBar.visibility = View.GONE
-                            Log.d("PositionsFragment", "Hiding progress bar (Loading: $isLoading, HasData: $hasUiData)")
+                        val errorSource = when (errorResource) {
+                            posResource -> "Position"
+                            driverResource -> "Driver"
+                            intervalResource -> "Interval"
+                            else -> null
                         }
-                        // If !isLoading and !hasUiData (e.g., empty success), keep progress bar hidden (or show empty state)
-                        else if (!isLoading && !hasUiData) {
+                        // Don't show loading if we already have position data displayed
+                        Triple(isLoading, errorSource to errorResource?.message, viewModel.uiPositions.value.isNotEmpty())
+
+                    }.collectLatest { (isLoading, errorDetails, hasUiData) ->
+                        val (errorSource, errorMessage) = errorDetails
+
+                        if (errorSource != null) {
+                            handleResourceError(errorSource, errorMessage)
                             binding.progressBar.visibility = View.GONE
-                            Log.d("PositionsFragment", "Hiding progress bar (Not Loading, No Data)")
-                            // Consider showing an "Empty" message TextView here
+                        } else if (isLoading && !hasUiData) { // Show loading ONLY if main data isn't loaded
+                            binding.progressBar.visibility = View.VISIBLE
+                        } else { // Hide loading if not loading OR if main data is loaded
+                            binding.progressBar.visibility = View.GONE
                         }
                     }
                 }
@@ -157,30 +196,38 @@ class PositionsFragment : Fragment() {
         }
     }
 
+
     private fun handleResourceError(source: String, message: String?) {
         val errorMsg = "$source Error: ${message ?: "Unknown error"}"
         Log.e("PositionsFragment", errorMsg)
-        // Avoid showing toast multiple times if both fail around the same time
-        // Maybe track if an error was already shown recently? For now, simple toast.
         Toast.makeText(context, errorMsg, Toast.LENGTH_SHORT).show()
     }
 
     // Observer for playback state (updates button icons)
     private fun observePlaybackState() {
+        // ... (This logic remains unchanged) ...
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 AudioPlayerManager.playbackState.collectLatest { state ->
                     Log.d("PositionsFragment", "Playback State Changed: $state")
-                    // Trigger redraw of relevant items
                     val affectedUrl: String? = when (state) {
                         is AudioPlayerManager.PlaybackState.Playing -> state.url
                         is AudioPlayerManager.PlaybackState.Stopped -> state.previousUrl
-                        else -> null
                     }
-                    val changedPosition = findAdapterPosition(affectedUrl)
-                    if (changedPosition != -1) {
-                        Log.d("PositionsFragment", "Notifying item change for playback state at pos $changedPosition")
-                        positionAdapter.notifyItemChanged(changedPosition)
+                    val positionsToUpdate = findAdapterPositionsByURL(affectedUrl)
+
+                    // Also need to update the previously playing item when stopping
+                    if (state is AudioPlayerManager.PlaybackState.Stopped) {
+                        findAdapterPositionsByURL(state.previousUrl).forEach { pos ->
+                            if (!positionsToUpdate.contains(pos)) positionsToUpdate.add(pos)
+                        }
+                    }
+
+                    if (positionsToUpdate.isNotEmpty()) {
+                        positionsToUpdate.distinct().forEach { pos ->
+                            Log.d("PositionsFragment", "Notifying item change for playback state at pos $pos")
+                            positionAdapter.notifyItemChanged(pos)
+                        }
                     }
                 }
             }
@@ -188,10 +235,16 @@ class PositionsFragment : Fragment() {
     }
 
 
-    // Helper function within PositionsFragment
-    private fun findAdapterPosition(url: String?): Int {
-        return url?.let { u ->
-            positionAdapter.currentList.indexOfFirst { it.latestRadio?.recordingUrl == u }
-        } ?: -1
+    // Helper function within PositionsFragment - adjusted to return a List
+    private fun findAdapterPositionsByURL(url: String?): MutableList<Int> {
+        val positions = mutableListOf<Int>()
+        url?.let { u ->
+            positionAdapter.currentList.forEachIndexed { index, uiPosition ->
+                if (uiPosition.latestRadio?.recordingUrl == u) {
+                    positions.add(index)
+                }
+            }
+        }
+        return positions
     }
 }

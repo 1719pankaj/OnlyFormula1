@@ -3,4 +3,13 @@
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
     <color name="blue">#a6d2ff</color>
+
+    <!-- Race Control Colors -->
+    <color name="flag_yellow">#FFFFFF00</color> <!-- Yellow -->
+    <color name="flag_red">#FFDC143C</color> <!-- Crimson Red -->
+    <color name="flag_green">#FF008000</color> <!-- Green -->
+    <color name="flag_chequered">#FFA9A9A9</color> <!-- Dark Gray (for Chequered/BW placeholder) -->
+    <color name="flag_black_white">#FFFFFFFF</color> <!-- White (for BW background) -->
+    <color name="flag_default">#40606060</color> <!-- Semi-transparent Dark Gray -->
+
 </resources>

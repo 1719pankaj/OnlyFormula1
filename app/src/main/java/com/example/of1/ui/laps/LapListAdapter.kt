@@ -59,9 +59,9 @@ class LapListAdapter : ListAdapter<Lap, LapListAdapter.LapViewHolder>(LapDiffCal
                 binding.tvLapTime.text = "In Pit / Out Lap"
             }
 
-            binding.tvSector1.text = "S1: ${if(lap.durationSector1 != null) "${lap.durationSector1}s" else "N/A"}"
-            binding.tvSector2.text = "S2: ${if(lap.durationSector2 != null) "${lap.durationSector2}s" else "N/A"}"
-            binding.tvSector3.text = "S3: ${if(lap.durationSector3 != null) "${lap.durationSector3}s" else "N/A"}"
+            binding.tvSector1.text = "${if(lap.durationSector1 != null) "${lap.durationSector1}s" else "N/A"}"
+            binding.tvSector2.text = "${if(lap.durationSector2 != null) "${lap.durationSector2}s" else "N/A"}"
+            binding.tvSector3.text = "${if(lap.durationSector3 != null) "${lap.durationSector3}s" else "N/A"}"
 
             // Set sector time colors based on segments
             setSectorColor(binding.tvSector1, lap.segmentsSector1)
@@ -69,9 +69,9 @@ class LapListAdapter : ListAdapter<Lap, LapListAdapter.LapViewHolder>(LapDiffCal
             setSectorColor(binding.tvSector3, lap.segmentsSector3)
 
 
-            binding.tvI1Speed.text = "i1 speed: ${if (lap.i1Speed != null) "${lap.i1Speed} Km/h" else "N/A"}"
-            binding.tvI2Speed.text = "i2 speed: ${if (lap.i2Speed != null) "${lap.i2Speed} Km/h" else "N/A"}"
-            binding.tvStSpeed.text = "Speed Trap: ${if (lap.stSpeed != null) "${lap.stSpeed} Km/h" else "N/A"}"
+            binding.tvI1Speed.text = "${if (lap.i1Speed != null) "${lap.i1Speed} Km/h" else "N/A"}"
+            binding.tvI2Speed.text = "${if (lap.i2Speed != null) "${lap.i2Speed} Km/h" else "N/A"}"
+            binding.tvStSpeed.text = "${if (lap.stSpeed != null) "${lap.stSpeed} Km/h" else "N/A"}"
 
             // Pit stop data
             if (pitStop != null) {

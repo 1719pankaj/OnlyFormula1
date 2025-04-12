@@ -3,9 +3,11 @@ package com.example.of1.data.remote
 import com.example.of1.data.model.Meeting
 import com.example.of1.data.model.openf1.OF1DriverResponse
 import com.example.of1.data.model.openf1.OpenF1CarDataResponse
+import com.example.of1.data.model.openf1.OpenF1IntervalResponse
 import com.example.of1.data.model.openf1.OpenF1LapResponse
 import com.example.of1.data.model.openf1.OpenF1PitResponse
 import com.example.of1.data.model.openf1.OpenF1PositionResponse
+import com.example.of1.data.model.openf1.OpenF1RaceControlResponse
 import com.example.of1.data.model.openf1.OpenF1SessionResponse
 import com.example.of1.data.model.openf1.OpenF1TeamRadioResponse
 
@@ -80,5 +82,19 @@ interface OpenF1ApiService {
         @Query("first_name", encoded = false) firstName: String,
         @Query("last_name", encoded = false) lastName: String
     ): Response<List<OF1DriverResponse>> //
+
+    @GET("intervals")
+    suspend fun getIntervals(
+        @Query("session_key") sessionKey: Int,
+        @Query("date>", encoded = false) date: String? = null // For fetching updates
+    ): Response<List<OpenF1IntervalResponse>> // Use the new response type
+
+
+    // ADD Race Control endpoint
+    @GET("race_control")
+    suspend fun getRaceControlMessages(
+        @Query("session_key") sessionKey: Int,
+        @Query("date>", encoded = false) date: String? = null // For polling updates
+    ): Response<List<OpenF1RaceControlResponse>> // Use the new response type
 
 }
