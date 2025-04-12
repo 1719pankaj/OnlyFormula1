@@ -26,62 +26,74 @@ jobs:
 
       - name: Decode and Validate debug.keystore
         env:
+          # Secret for decoding
           DEBUG_KEYSTORE_BASE64: ${{ secrets.DEBUG_KEYSTORE_BASE64 }}
+          # Secret needed for validation (keytool)
           DEBUG_STORE_PASSWORD: ${{ secrets.DEBUG_STORE_PASSWORD }}
         run: |
-          # ... (Decoding part remains the same) ...
-          Write-Host "Successfully decoded and potentially wrote keystore bytes to $keystorePath"
+          # --- Decoding Part ---
+          $keystoreDir = Join-Path $HOME ".android"
+          New-Item -ItemType Directory -Force -Path $keystoreDir
+          $keystorePath = Join-Path $keystoreDir "debug.keystore"
+          Write-Host "Target keystore path: $keystorePath"
 
-          # --- Validation Part ---
-          Write-Host "Validating the written keystore file..."
-          # ... (File size check remains the same) ...
-          Write-Host "Keystore file size: $($fileInfo.Length) bytes"
-
-          # --- Explicit Variable Debugging (NEW) ---
-          Write-Host "Attempting to read DEBUG_STORE_PASSWORD from environment..."
-          # Check existence AGAIN right before use
-          if (Test-Path Env:DEBUG_STORE_PASSWORD) {
-              Write-Host "Env:DEBUG_STORE_PASSWORD EXISTS."
-              # Assign to variable
-              $storePassword = $env:DEBUG_STORE_PASSWORD
-              # Check if the VARIABLE is null or empty AFTER assignment
-              if ([string]::IsNullOrEmpty($storePassword)) {
-                  Write-Error "CRITICAL: Env:DEBUG_STORE_PASSWORD exists, but assigned \$storePassword variable is NULL or EMPTY."
-                  # Optionally print the raw env var - MIGHT BE MASKED but worth trying
-                  $rawEnvPass = $env:DEBUG_STORE_PASSWORD
-                  Write-Host "Raw value from \$env:DEBUG_STORE_PASSWORD: '$rawEnvPass'" # Check if it prints '***' or ''
-                  exit 1 # Fail here if empty
-              } else {
-                  Write-Host "\$storePassword variable assigned. Length: $($storePassword.Length)."
-                  # MASKED - This will likely just print '***' but confirms it's not empty
-                  Write-Host "Value assigned to \$storePassword (masked): '$storePassword'"
-              }
+          $base64 = $env:DEBUG_KEYSTORE_BASE64
+          if (-not [string]::IsNullOrEmpty($base64)) {
+            try {
+              $bytes = [System.Convert]::FromBase64String($base64)
+              [System.IO.File]::WriteAllBytes($keystorePath, $bytes)
+              Write-Host "Successfully decoded and potentially wrote keystore bytes to $keystorePath"
+            } catch {
+              Write-Error "Failed to decode or write keystore bytes: $($_.Exception.Message)"
+              exit 1
+            }
           } else {
-              Write-Error "CRITICAL: Env:DEBUG_STORE_PASSWORD does NOT exist in environment."
-              exit 1 # Fail here if not set
+            Write-Error "DEBUG_KEYSTORE_BASE64 secret is empty or not set!"
+            exit 1
           }
-          # --- End Explicit Variable Debugging ---
 
-          # Attempt keytool list
+          # --- Validation Part (New) ---
+          Write-Host "Validating the written keystore file..."
+
+          # Check file size
+          try {
+              $fileInfo = Get-Item $keystorePath -ErrorAction Stop
+              Write-Host "Keystore file size: $($fileInfo.Length) bytes"
+              if ($fileInfo.Length -eq 0) {
+                  Write-Error "Validation Failed: Keystore file is empty (0 bytes)."
+                  exit 1
+              }
+          } catch {
+              Write-Error "Validation Failed: Cannot get file info for $keystorePath. Error: $($_.Exception.Message)"
+              exit 1
+          }
+
+          # Attempt keytool list (Requires JAVA_HOME to be set, which setup-java does)
           $keytoolPath = Join-Path $env:JAVA_HOME "bin\keytool.exe"
           Write-Host "Using keytool at: $keytoolPath"
-          # $storePassword is already assigned and validated above
+          $storePassword = $env:DEBUG_STORE_PASSWORD
 
+          # Check if keytool exists
           if (-not (Test-Path $keytoolPath -PathType Leaf)) {
              Write-Error "Validation Failed: keytool.exe not found at expected path: $keytoolPath"
+             exit 1
+          }
+          # Check if password env var is set (secrets are masked, but check if the env var was populated)
+          if (-not (Test-Path Env:DEBUG_STORE_PASSWORD)) {
+             Write-Error "Validation Failed: DEBUG_STORE_PASSWORD environment variable not set in this step's env block for validation."
              exit 1
           }
 
           # Execute keytool
           Write-Host "Running keytool -list..."
-          # Ensure the variable is correctly passed - use double quotes around it in the command string
+          # Use Invoke-Expression or Start-Process might be more robust for handling args/passwords
           $command = "& `"$keytoolPath`" -list -v -keystore `"$keystorePath`" -storepass `"$storePassword`" -noprompt"
-          Write-Host "Executing: $command" # Password should appear masked ('***') if not empty
-          Invoke-Expression $command | Out-Host
+          Write-Host "Executing: $command" # Log the command, password will be masked if secret masking works
+          Invoke-Expression $command | Out-Host # Pipe output to host
 
-          # Check the exit code
+          # Check the exit code of the last command
           if ($LASTEXITCODE -ne 0) {
-            Write-Error "Validation Failed: keytool -list command failed with exit code $LASTEXITCODE..."
+            Write-Error "Validation Failed: keytool -list command failed with exit code $LASTEXITCODE. Check error messages above. Is the store password in the DEBUG_STORE_PASSWORD secret correct for the DECODED keystore?"
             exit 1
           } else {
             Write-Host "Validation Success: keytool -list command succeeded on the runner."
