@@ -1,5 +1,4 @@
 # .github/workflows/android-ci-cd.yml
-
 name: Android CI/CD Debug Build & Release
 
 on:
@@ -9,189 +8,122 @@ on:
 
 permissions:
   contents: write
+  actions: read
 
 jobs:
   build-and-release:
     runs-on: windows-latest
 
     steps:
+      # 1. Checkout code - Fetch full history for git log
       - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
         with:
-          java-version: '17'
-          distribution: 'temurin'
+          fetch-depth: 0 # Fetch all history for git log
 
-      - name: Decode and Validate debug.keystore
+      # 2. Set up Gradle (handles Java, caching, and provides 'gradle' command)
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v3
+        # action automatically configures gradle-user-home cache by default
+
+      # 3. Decode Keystore (Simplified)
+      - name: Decode Keystore
         env:
-          # Secret for decoding
           DEBUG_KEYSTORE_BASE64: ${{ secrets.DEBUG_KEYSTORE_BASE64 }}
-          # Secret needed for validation (keytool)
-          DEBUG_KEYSTORE_PASSWORD: ${{ secrets.DEBUG_KEYSTORE_PASSWORD }}
         run: |
-          # --- Decoding Part ---
           $keystoreDir = Join-Path $HOME ".android"
           New-Item -ItemType Directory -Force -Path $keystoreDir
           $keystorePath = Join-Path $keystoreDir "debug.keystore"
-          Write-Host "Target keystore path: $keystorePath"
-
           $base64 = $env:DEBUG_KEYSTORE_BASE64
           if (-not [string]::IsNullOrEmpty($base64)) {
             try {
               $bytes = [System.Convert]::FromBase64String($base64)
               [System.IO.File]::WriteAllBytes($keystorePath, $bytes)
-              Write-Host "Successfully decoded and potentially wrote keystore bytes to $keystorePath"
+              Write-Host "Keystore file written to $keystorePath"
             } catch {
-              Write-Error "Failed to decode or write keystore bytes: $($_.Exception.Message)"
+              Write-Error "Failed to decode or write keystore: $($_.Exception.Message)"
               exit 1
             }
           } else {
-            Write-Error "DEBUG_KEYSTORE_BASE64 secret is empty or not set!"
+            Write-Error "DEBUG_KEYSTORE_BASE64 secret is empty!"
             exit 1
           }
 
-          # --- Validation Part (New) ---
-          Write-Host "Validating the written keystore file..."
-
-          # Check file size
-          try {
-              $fileInfo = Get-Item $keystorePath -ErrorAction Stop
-              Write-Host "Keystore file size: $($fileInfo.Length) bytes"
-              if ($fileInfo.Length -eq 0) {
-                  Write-Error "Validation Failed: Keystore file is empty (0 bytes)."
-                  exit 1
-              }
-          } catch {
-              Write-Error "Validation Failed: Cannot get file info for $keystorePath. Error: $($_.Exception.Message)"
-              exit 1
-          }
-
-          # Attempt keytool list (Requires JAVA_HOME to be set, which setup-java does)
-          $keytoolPath = Join-Path $env:JAVA_HOME "bin\keytool.exe"
-          Write-Host "Using keytool at: $keytoolPath"
-          $storePassword = $env:DEBUG_KEYSTORE_PASSWORD
-
-          # Check if keytool exists
-          if (-not (Test-Path $keytoolPath -PathType Leaf)) {
-             Write-Error "Validation Failed: keytool.exe not found at expected path: $keytoolPath"
-             exit 1
-          }
-          # Check if password env var is set (secrets are masked, but check if the env var was populated)
-          if (-not (Test-Path Env:DEBUG_KEYSTORE_PASSWORD)) {
-             Write-Error "Validation Failed: DEBUG_KEYSTORE_PASSWORD environment variable not set in this step's env block for validation."
-             exit 1
-          }
-
-          # Execute keytool
-          Write-Host "Running keytool -list..."
-          # Use Invoke-Expression or Start-Process might be more robust for handling args/passwords
-          $command = "& `"$keytoolPath`" -list -v -keystore `"$keystorePath`" -storepass `"$storePassword`" -noprompt"
-          Write-Host "Executing: $command" # Log the command, password will be masked if secret masking works
-          Invoke-Expression $command | Out-Host # Pipe output to host
-
-          # Check the exit code of the last command
-          if ($LASTEXITCODE -ne 0) {
-            Write-Error "Validation Failed: keytool -list command failed with exit code $LASTEXITCODE. Check error messages above. Is the store password in the DEBUG_KEYSTORE_PASSWORD secret correct for the DECODED keystore?"
-            exit 1
-          } else {
-            Write-Host "Validation Success: keytool -list command succeeded on the runner."
-          }
-
-      # Grant execute permission (mostly for consistency, less critical for .bat)
+      # 4. Grant execute permission for gradlew (Still good practice, even if using 'gradle')
       - name: Grant execute permission for gradlew
         run: chmod +x ./gradlew
 
+      # 5. Get Version Name (Cleaned up logging)
       - name: Get Version Name
         id: get_version
         env:
-          DEBUG_STORE_PASSWORD: ${{ secrets.DEBUG_STORE_PASSWORD }}
+          # Signing secrets needed if printVersionName task requires project evaluation
+          DEBUG_KEYSTORE_PASSWORD: ${{ secrets.DEBUG_KEYSTORE_PASSWORD }}
           DEBUG_KEY_ALIAS: ${{ secrets.DEBUG_KEY_ALIAS }}
           DEBUG_KEY_PASSWORD: ${{ secrets.DEBUG_KEY_PASSWORD }}
         run: |
-          Write-Host "Attempting to get version name by running printVersionName..."
-          # Run gradle, capture ALL output (stdout & stderr, just in case)
-          $rawOutput = ./gradlew.bat :app:printVersionName -q --no-daemon 2>&1
+          # Run gradle using the command set up by gradle/actions/setup-gradle
+          $rawOutput = gradle :app:printVersionName -q --no-daemon 2>&1
 
-          # Check exit code FIRST.
           if ($LASTEXITCODE -ne 0) {
-            Write-Error "Gradle task printVersionName failed with exit code $LASTEXITCODE. Full output/Error: $rawOutput"
+            Write-Error "Gradle task printVersionName failed. Output/Error: $rawOutput"
             exit 1
           }
-
-          # If task succeeded, process the output:
-          Write-Host "Raw output from printVersionName: '$rawOutput'"
-          # Trim whitespace, then split by space, get the last non-empty element
           $parts = $rawOutput.Trim().Split([char[]]' ', [System.StringSplitOptions]::RemoveEmptyEntries)
-
           if ($parts.Length -eq 0) {
-            Write-Error "Gradle task succeeded but splitting the output resulted in zero parts. Raw output: '$rawOutput'"
+            Write-Error "Gradle task succeeded but splitting output resulted in zero parts. Raw output: '$rawOutput'"
             exit 1
           }
-
-          # Assume the version name is the last part
           $version = $parts[-1]
-          Write-Host "Extracted last part as version: '$version'"
-
-          # Basic sanity check (optional: adjust regex if needed for your version format)
-          if (-not ($version -match "^\d+(\.\d+)*([\w-]*)$")) {
-             Write-Warning "Warning: Extracted version '$version' might not look like a standard version number."
-          }
-
           if ([string]::IsNullOrEmpty($version)) {
              Write-Error "Extracted version is empty!"
              exit 1
           }
-
           echo "version_name=$version" >> $env:GITHUB_OUTPUT
-          Write-Host "Set version_name output variable to: '$version'"
+          Write-Host "Version name set to: $version"
 
-      - name: Display Signing Environment Variables
+      # 6. Get Latest Commit Message
+      - name: Get Latest Commit Message
+        id: get_commit_message
         run: |
-          echo "Store Pass Env Var Exists: $(Test-Path Env:DEBUG_KEYSTORE_PASSWORD)"
-          echo "Key Alias Env Var Exists: $(Test-Path Env:DEBUG_KEY_ALIAS)"
-          echo "Key Pass Env Var Exists: $(Test-Path Env:DEBUG_KEY_PASSWORD)"
-          # Optionally, try printing the values (BE CAREFUL - this might expose them in logs if not masked)
-          # You can check GitHub Actions masking, but let's start with just checking existence.
-          echo "DEBUG_KEYSTORE_PASSWORD='${{ env.DEBUG_KEYSTORE_PASSWORD }}'" # Requires env block below
-        env: # If you uncomment the echo line above, you need this env block too
-          DEBUG_KEYSTORE_PASSWORD: ${{ secrets.DEBUG_KEYSTORE_PASSWORD }}
-      # --- END NEW DEBUGGING STEP ---
+          # Get full commit message body, replace characters problematic for JSON/env vars
+          $commitMessage = git log -1 --pretty=%B
+          # Escape backticks, newlines, double quotes for setting output
+          $commitMessage = $commitMessage -replace '`','``' -replace '\r?\n','`n' -replace '"','`"'
+          echo "commit_message=$commitMessage" >> $env:GITHUB_OUTPUT
+          Write-Host "Commit message captured."
 
-      - name: Clean Build Cache
-        run: ./gradlew.bat clean --no-daemon
 
+      # 7. Clean Build Cache (Optional but sometimes helpful)
+      - name: Clean Build Outputs
+        # Use 'gradle' command provided by setup-gradle action
+        run: gradle clean --no-daemon
+
+      # 8. Build Debug APK (Cleaned up, using 'gradle')
       - name: Build Debug APK
         env:
+          # Pass signing secrets to the build
           DEBUG_KEYSTORE_PASSWORD: ${{ secrets.DEBUG_KEYSTORE_PASSWORD }}
           DEBUG_KEY_ALIAS: ${{ secrets.DEBUG_KEY_ALIAS }}
           DEBUG_KEY_PASSWORD: ${{ secrets.DEBUG_KEY_PASSWORD }}
-        # Add --stacktrace
-        run: ./gradlew.bat assembleDebug --no-daemon --stacktrace
+        # Use 'gradle' command provided by setup-gradle action
+        # Keep --stacktrace for build debugging
+        run: gradle assembleDebug --no-daemon --stacktrace
 
+      # 9. Create Git Tag (Cleaned up logging)
       - name: Create Git Tag
         run: |
           $tagName = "${{ steps.get_version.outputs.version_name }}"
-          if ([string]::IsNullOrEmpty($tagName)) {
-            Write-Error "Version name output from previous step is empty. Cannot create tag."
-            exit 1
-          }
           Write-Host "Attempting to create and push tag: $tagName"
           git tag $tagName
-          # Add error checking for push
           git push origin $tagName
           if ($LASTEXITCODE -ne 0) {
-            Write-Error "git push origin tag '$tagName' failed."
-            # Check if tag already exists - might not be a fatal error depending on desired flow
-            # git fetch --tags # Ensure local tags are up-to-date
-            # if (-not (git describe --tags --exact-match HEAD 2>$null)) { exit 1 } # Exit if push failed for other reasons
-            Write-Warning "Tag push failed. It might already exist." # Or make it fail: exit 1
+            Write-Warning "Tag push failed for '$tagName'. It might already exist." # Changed to warning
           } else {
             Write-Host "Successfully pushed tag $tagName"
           }
 
-
+      # 10. Create GitHub Release (Using commit message)
       - name: Create GitHub Release
         id: create_release
         uses: actions/create-release@v1
@@ -200,18 +132,19 @@ jobs:
         with:
           tag_name: ${{ steps.get_version.outputs.version_name }}
           release_name: Release ${{ steps.get_version.outputs.version_name }}
-          body: |
-            Debug build for version ${{ steps.get_version.outputs.version_name }}
+          # Use the captured commit message as the body
+          body: ${{ steps.get_commit_message.outputs.commit_message }}
           draft: false
-          prerelease: true
+          prerelease: true # Still a debug build
 
+      # 11. Upload Debug APK to Release
       - name: Upload Debug APK to Release
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          # Use Join-Path for constructing asset_path robustly (optional but good practice)
-          asset_path: ./app/build/outputs/apk/debug/app-debug.apk # Standard path usually works fine
+          asset_path: ./app/build/outputs/apk/debug/app-debug.apk
+          # Use the version name in the uploaded asset name
           asset_name: app-debug-${{ steps.get_version.outputs.version_name }}.apk
           asset_content_type: application/vnd.android.package-archive
