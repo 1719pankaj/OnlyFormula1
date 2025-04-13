@@ -20,97 +20,122 @@ class PositionRepository @Inject constructor(
     private val positionDao: PositionDao
 ) {
     fun getPositions(meetingKey: Int, sessionKey: Int): Flow<Resource<List<Position>>> = flow {
-        emit(Resource.Loading()) // Emit Loading initially
-        Log.d("PositionRepository", "Initial Loading emitted")
+        emit(Resource.Loading(true)) // Start loading
+        Log.d("PositionRepository", "getPositions called for session $sessionKey")
 
-        // Determine the timestamp for polling (only for live data, but fetch it here anyway)
-        val latestTimestamp = positionDao.getLatestTimestamp(meetingKey, sessionKey)
-        Log.d("PositionRepository", "Latest timestamp from DB: $latestTimestamp")
-
+        // 1. Emit Cached Data First
+        var emittedCachedData = false
+        var localData: List<PositionEntity> = emptyList() // Store local data for later checks
         try {
-            Log.d("PositionRepository", "Fetching from API with date>=$latestTimestamp")
+            localData = positionDao.getPositionsBySession(meetingKey, sessionKey).first()
+            if (localData.isNotEmpty()) {
+                val latestPositions = transformToLatestPositions(localData)
+                Log.d("PositionRepository", "Emitting ${latestPositions.size} latest positions from cache.")
+                emit(Resource.Success(latestPositions))
+                emittedCachedData = true
+                // Keep Loading(true) as we will fetch from network
+            } else {
+                Log.d("PositionRepository", "No cached positions found for session $sessionKey.")
+            }
+        } catch (e: Exception) {
+            Log.e("PositionRepository", "Error fetching cached positions", e)
+            // Continue to network fetch, emit error later if network fails too
+        }
+
+        // 2. Fetch from Network
+        var latestTimestamp: String? = null // Initialize here
+        try {
+            // Determine the timestamp for polling *after* emitting cache
+            latestTimestamp = if (emittedCachedData) {
+                positionDao.getLatestTimestamp(meetingKey, sessionKey) // Fetch timestamp only if cache existed
+            } else {
+                null // Fetch all if cache was empty
+            }
+            Log.d("PositionRepository", "Fetching from API with sessionKey=$sessionKey, date>=$latestTimestamp")
+
             val response = apiService.getPositions(meetingKey, sessionKey, latestTimestamp)
 
             if (response.isSuccessful) {
-                val positions = response.body() ?: emptyList()
-                Log.d("PositionRepository", "API call successful: ${positions.size} positions")
+                val newApiPositions = response.body() ?: emptyList()
+                Log.d("PositionRepository", "API call successful: ${newApiPositions.size} new position entries")
 
-                val positionEntities = positions.map {
-                    PositionEntity(
-                        date = it.date,
-                        driverNumber = it.driverNumber,
-                        meetingKey = it.meetingKey,
-                        position = it.position,
-                        sessionKey = it.sessionKey
-                    )
-                }
-                if (positionEntities.isNotEmpty()) {
-                    // Use REPLACE strategy in DAO, so insert updates existing ones based on primary key
-                    positionDao.insertPositions(positionEntities)
+                if (newApiPositions.isNotEmpty()) {
+                    val positionEntities = newApiPositions.map {
+                        PositionEntity( // Map API response to Entity
+                            date = it.date,
+                            driverNumber = it.driverNumber,
+                            meetingKey = it.meetingKey,
+                            position = it.position,
+                            sessionKey = it.sessionKey
+                        )
+                    }
+                    positionDao.insertPositions(positionEntities) // Insert new data (REPLACE strategy handles updates)
                     Log.d("PositionRepository", "Inserted/Updated positions in database")
-                }
 
-                // After successful API call and DB update, query the DB again to get the full, latest list
-                val allPositions = positionDao.getPositionsBySession(meetingKey, sessionKey).first()
-                val latestPositions = transformToLatestPositions(allPositions)
-                emit(Resource.Success(latestPositions)) // Emit the final Success state
-                Log.d("PositionRepository", "Emitted Success from API/DB")
+                    // Query DB again to get the complete, updated list
+                    val allPositions = positionDao.getPositionsBySession(meetingKey, sessionKey).first()
+                    val latestCombinedPositions = transformToLatestPositions(allPositions)
+                    emit(Resource.Success(latestCombinedPositions)) // Emit the final combined list
+                    Log.d("PositionRepository", "Emitted Success from combined API/DB data")
 
-            } else {
-                // API call failed, try emitting local data if available
-                val localData = positionDao.getPositionsBySession(meetingKey, sessionKey).first()
-                if (localData.isNotEmpty()) {
-                    Log.w("PositionRepository", "API failed (${response.code()}), emitting cached data.")
-                    emit(Resource.Success(transformToLatestPositions(localData)))
                 } else {
-                    // API failed and no local data
-                    val errorBody = response.errorBody()?.string()
-                    Log.e("PositionRepository", "API call failed: ${response.code()}, errorBody: $errorBody")
+                    Log.d("PositionRepository", "API returned no new positions.")
+                    // If API returned nothing new, the cached data (if any) is still the latest success state.
+                    // We just need to ensure the Loading state is turned off.
+                    if (!emittedCachedData) {
+                        // If cache was empty AND API returned empty, emit empty success
+                        emit(Resource.Success(emptyList()))
+                    }
+                    // If cache was emitted, its Success state remains valid.
+                }
+            } else {
+                // API call failed
+                val errorBody = response.errorBody()?.string()
+                Log.e("PositionRepository", "API call failed: ${response.code()}, errorBody: $errorBody")
+                // Emit error only if we didn't show cached data
+                if (!emittedCachedData) {
                     emit(Resource.Error("Error fetching positions: ${response.code()} - $errorBody"))
+                } else {
+                    // If cache was shown, we don't emit error, just stop loading.
+                    Log.w("PositionRepository", "API failed, but cached data was shown.")
                 }
             }
 
         } catch (e: IOException) {
-            // Network error, try emitting local data
-            val localData = positionDao.getPositionsBySession(meetingKey, sessionKey).first()
-            if (localData.isNotEmpty()) {
-                Log.w("PositionRepository", "Network error, emitting cached data.", e)
-                emit(Resource.Success(transformToLatestPositions(localData)))
+            Log.e("PositionRepository", "Network error", e)
+            if (!emittedCachedData) { // Emit error only if cache wasn't shown
+                emit(Resource.Error("Network error: ${e.localizedMessage ?: "Check connection"}"))
             } else {
-                Log.e("PositionRepository", "Network error", e)
-                emit(Resource.Error("Network error: ${e.localizedMessage ?: "Check your internet connection."}"))
+                Log.w("PositionRepository", "Network error, but cached data was shown.")
             }
         } catch (e: HttpException) {
-            // HTTP error, try emitting local data
-            val localData = positionDao.getPositionsBySession(meetingKey, sessionKey).first()
-            if (localData.isNotEmpty()) {
-                Log.w("PositionRepository", "HTTP error, emitting cached data.", e)
-                emit(Resource.Success(transformToLatestPositions(localData)))
+            Log.e("PositionRepository", "HTTP error", e)
+            if (!emittedCachedData) { // Emit error only if cache wasn't shown
+                emit(Resource.Error("HTTP error: ${e.localizedMessage ?: "Unexpected error"}"))
             } else {
-                Log.e("PositionRepository", "HTTP error", e)
-                emit(Resource.Error("HTTP error: ${e.localizedMessage ?: "An unexpected error occurred."}"))
+                Log.w("PositionRepository", "HTTP error, but cached data was shown.")
             }
-        } finally {
-            emit(Resource.Loading(false)) // Ensure loading stops
+        } catch (e: Exception) {
+            Log.e("PositionRepository", "Unexpected error during position fetch", e)
+            if (!emittedCachedData) {
+                emit(Resource.Error("Unexpected error: ${e.localizedMessage ?: "Unknown error"}"))
+            } else {
+                Log.w("PositionRepository", "Unexpected error, but cached data was shown.")
+            }
+        }
+        finally {
+            emit(Resource.Loading(false)) // Ensure loading stops regardless of path
             Log.d("PositionRepository", "Emitted Loading(false) in finally block")
         }
-    }.catch { e ->
-        Log.e("PositionRepository", "Flow error", e)
-        emit(Resource.Error("Unexpected error: ${e.localizedMessage ?: "Unknown error"}"))
-        emit(Resource.Loading(false)) // Ensure loading stops
-    }
+    } //.catch { ... } // .catch is less needed here as try/catch handles flow exceptions
 
-    // Helper function to convert a list of PositionEntity objects to a list of Position objects containing only the most recent position for each driver.
+    // Helper function remains the same
     private fun transformToLatestPositions(entities: List<PositionEntity>): List<Position> {
-        // Group by driver number, then take the latest entry for each driver based on the 'date' field.
         return entities.groupBy { it.driverNumber }
-            .mapValues { entry ->
-                entry.value.maxByOrNull { it.date }
-            }
+            .mapValues { entry -> entry.value.maxByOrNull { it.date } }
             .values
-            .filterNotNull() // Ensure no nulls are passed forward
+            .filterNotNull()
             .map { entity ->
-                // Map from your PositionEntity to your Position data class.
                 Position(
                     entity.date,
                     entity.driverNumber,
@@ -119,6 +144,6 @@ class PositionRepository @Inject constructor(
                     entity.sessionKey
                 )
             }
-            .sortedBy { it.position } // Add this line to sort by position
+            .sortedBy { it.position }
     }
 }

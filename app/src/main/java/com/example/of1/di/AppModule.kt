@@ -4,10 +4,12 @@ import android.content.Context
 import com.example.of1.data.local.Of1Database
 import com.example.of1.data.local.dao.CarDataDao
 import com.example.of1.data.local.dao.DriverDao
+import com.example.of1.data.local.dao.IntervalDao
 import com.example.of1.data.local.dao.LapDao
 import com.example.of1.data.local.dao.MeetingDao
 import com.example.of1.data.local.dao.PitStopDao
 import com.example.of1.data.local.dao.PositionDao
+import com.example.of1.data.local.dao.RaceControlDao
 import com.example.of1.data.local.dao.RaceDao
 import com.example.of1.data.local.dao.ResultDao
 import com.example.of1.data.local.dao.SeasonDao
@@ -105,9 +107,9 @@ object AppModule {
     }
 
     @Provides
-    @Singleton // Repository should also be a singleton
+    @Singleton
     fun provideSessionRepository(apiService: OpenF1ApiService, sessionDao: SessionDao): SessionRepository {
-        return SessionRepository(apiService)
+        return SessionRepository(apiService, sessionDao)
     }
 
     @Provides
@@ -230,15 +232,26 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideIntervalRepository(apiService: OpenF1ApiService): IntervalRepository {
-        return IntervalRepository(apiService)
+    fun provideIntervalDao(database: Of1Database): IntervalDao {
+        return database.intervalDao()
     }
 
-    // ADD Provider for RaceControlRepository
     @Provides
     @Singleton
-    fun provideRaceControlRepository(apiService: OpenF1ApiService): RaceControlRepository {
-        return RaceControlRepository(apiService)
+    fun provideIntervalRepository(apiService: OpenF1ApiService, intervalDao: IntervalDao): IntervalRepository {
+        return IntervalRepository(apiService, intervalDao) // Add dao
+    }
+
+    @Provides
+    @Singleton
+    fun provideRaceControlDao(database: Of1Database): RaceControlDao {
+        return database.raceControlDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideRaceControlRepository(apiService: OpenF1ApiService, raceControlDao: RaceControlDao): RaceControlRepository {
+        return RaceControlRepository(apiService, raceControlDao) // Add dao
     }
 }
 

@@ -41,12 +41,12 @@ class PositionsFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         setupRecyclerViews() // Renamed
-        observeUiUpdates()
+        observeUiData()
         observePlaybackState()
         observeRaceControlMessages() // Add observer for RC messages
 
         // Initialize ViewModel which handles fetching based on isLive
-        viewModel.getPositions(args.meetingKey, args.sessionKey, args.isLive)
+        viewModel.initializeData(args.meetingKey, args.sessionKey, args.sessionType, args.isLive)
     }
 
     override fun onResume() {
@@ -70,8 +70,8 @@ class PositionsFragment : Fragment() {
     }
 
 
-    private fun setupRecyclerViews() { // Renamed
-        // Position Adapter Setup
+    private fun setupRecyclerViews() {
+        // Position Adapter Setup (Unchanged)
         positionAdapter = PositionListAdapter()
         positionAdapter.onPositionClick = { uiPosition ->
             val action = PositionsFragmentDirections.actionPositionsFragmentToLapsFragment(
@@ -88,24 +88,14 @@ class PositionsFragment : Fragment() {
         binding.recyclerView.apply {
             layoutManager = LinearLayoutManager(context)
             adapter = positionAdapter
-            // Optional: Improve performance if item size doesn't change
-            // setHasFixedSize(true)
         }
 
-        // Race Control Adapter Setup
+        // Race Control Adapter Setup (Unchanged)
         raceControlAdapter = RaceControlAdapter()
         binding.raceControlRecyclerView.apply {
-            layoutManager = LinearLayoutManager(context).apply {
-                // Stack from bottom might be more intuitive for incoming messages
-                // stackFromEnd = true
-                // reverseLayout = true // Consider if newest should be at bottom or top
-            }
+            layoutManager = LinearLayoutManager(context)
             adapter = raceControlAdapter
-            // Prevent nested scrolling issues if needed (usually not required here)
-            // isNestedScrollingEnabled = false
-            // Optional: Improve performance
-            setHasFixedSize(true) // Size changes based on content, maybe not fixed
-            itemAnimator = null // Disable default animations if they cause issues
+            itemAnimator = null // Consider keeping this to avoid flicker on updates
         }
     }
 
@@ -140,55 +130,61 @@ class PositionsFragment : Fragment() {
 
 
     // Consolidated observer for Loading/Error states of primary data
-    private fun observeUiUpdates() {
+    private fun observeUiData() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
 
                 // --- Observer 1: Update the Position RecyclerView Adapter ---
-                // (This remains unchanged)
                 launch {
                     viewModel.uiPositions.collectLatest { uiPositionsList ->
+                        Log.d("PositionsFragment", "Updating position adapter with ${uiPositionsList.size} items.")
                         positionAdapter.submitList(uiPositionsList)
-                        // Log.d("PositionsFragment", "Success: Submitted ${uiPositionsList.size} UI positions")
+                        // Visibility of progress bar is handled below based on Resource states
                     }
                 }
 
-                // --- Observer 2: Control Loading Indicator and Handle Errors ---
-                // (We'll keep intervals here for overall loading state, but RC errors are handled implicitly)
+                // --- Observer 2: Control Loading Indicator and Handle PRIMARY Errors ---
                 launch {
+                    // Combine only the Resources needed for the *initial* position list display
                     combine(
-                        viewModel.positions,
-                        viewModel.drivers,
-                        viewModel.intervals
-                    ) { posResource, driverResource, intervalResource ->
-                        // Determine overall loading state for *primary* data
-                        val isLoading = (posResource is Resource.Loading && posResource.isLoading) ||
-                                (driverResource is Resource.Loading && driverResource.isLoading) ||
-                                (intervalResource is Resource.Loading && intervalResource.isLoading)
+                        viewModel.positions, // Resource<List<Position>>
+                        viewModel.drivers    // Resource<List<OF1Driver>>
+                        // We don't include intervals here for loading state,
+                        // as it might load later without blocking the initial positions
+                    ) { posResource, driverResource ->
 
-                        val errorResource = listOf(posResource, driverResource, intervalResource)
+                        // Show loading if EITHER positions OR drivers are in initial Loading state
+                        val isLoading = (posResource is Resource.Loading && posResource.isLoading && posResource.data == null) || // Check data==null for initial load
+                                (driverResource is Resource.Loading && driverResource.isLoading && driverResource.data == null)
+
+                        // Find the first critical error (positions or drivers)
+                        val errorResource = listOf(posResource, driverResource)
                             .filterIsInstance<Resource.Error<*>>()
                             .firstOrNull()
 
                         val errorSource = when (errorResource) {
                             posResource -> "Position"
                             driverResource -> "Driver"
-                            intervalResource -> "Interval"
                             else -> null
                         }
-                        // Don't show loading if we already have position data displayed
+                        // Pass loading state, error details, and whether the UI list has data *yet*
                         Triple(isLoading, errorSource to errorResource?.message, viewModel.uiPositions.value.isNotEmpty())
 
                     }.collectLatest { (isLoading, errorDetails, hasUiData) ->
                         val (errorSource, errorMessage) = errorDetails
 
                         if (errorSource != null) {
+                            // Handle critical error (positions/drivers failed)
                             handleResourceError(errorSource, errorMessage)
-                            binding.progressBar.visibility = View.GONE
-                        } else if (isLoading && !hasUiData) { // Show loading ONLY if main data isn't loaded
+                            binding.progressBar.visibility = View.GONE // Hide loading on error
+                        } else if (isLoading && !hasUiData) {
+                            // Show loading indicator ONLY if loading AND the combined UI list isn't populated yet
                             binding.progressBar.visibility = View.VISIBLE
-                        } else { // Hide loading if not loading OR if main data is loaded
+                            Log.d("PositionsFragment", "Showing progress bar (Initial Loading: $isLoading, HasData: $hasUiData)")
+                        } else {
+                            // Hide loading indicator if not loading OR if UI data has arrived
                             binding.progressBar.visibility = View.GONE
+                            // Log.d("PositionsFragment", "Hiding progress bar (Loading: $isLoading, HasData: $hasUiData)")
                         }
                     }
                 }
@@ -246,5 +242,20 @@ class PositionsFragment : Fragment() {
             }
         }
         return positions
+    }
+
+    private fun observeLapStatus() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.lapStatusText.collectLatest { statusText ->
+                    if (statusText.isNotBlank()) {
+                        binding.tvLapStatus.text = statusText
+                        binding.tvLapStatus.visibility = View.VISIBLE
+                    } else {
+                        binding.tvLapStatus.visibility = View.GONE
+                    }
+                }
+            }
+        }
     }
 }

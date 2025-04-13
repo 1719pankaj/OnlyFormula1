@@ -6,10 +6,12 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import com.example.of1.data.local.dao.CarDataDao
 import com.example.of1.data.local.dao.DriverDao
+import com.example.of1.data.local.dao.IntervalDao
 import com.example.of1.data.local.dao.LapDao
 import com.example.of1.data.local.dao.MeetingDao
 import com.example.of1.data.local.dao.PitStopDao
 import com.example.of1.data.local.dao.PositionDao
+import com.example.of1.data.local.dao.RaceControlDao
 import com.example.of1.data.local.dao.RaceDao
 import com.example.of1.data.local.dao.ResultDao
 import com.example.of1.data.local.dao.SeasonDao
@@ -25,6 +27,8 @@ import com.example.of1.data.local.entity.ResultEntity
 import com.example.of1.data.local.entity.SeasonEntity
 import com.example.of1.data.local.entity.SessionEntity
 import com.example.of1.data.local.dao.TeamRadioDao
+import com.example.of1.data.local.entity.IntervalEntity
+import com.example.of1.data.local.entity.RaceControlEntity
 import com.example.of1.data.local.entity.TeamRadioEntity
 
 @Database(entities = [
@@ -38,7 +42,9 @@ import com.example.of1.data.local.entity.TeamRadioEntity
     LapEntity::class,
     CarDataEntity::class,
     PitStopEntity::class,
-    TeamRadioEntity::class], version = 4, exportSchema = false) // Add entities, update version
+    TeamRadioEntity::class,
+    IntervalEntity::class,
+    RaceControlEntity::class], version = 7, exportSchema = false) // Add entities, update version
 
 abstract class Of1Database : RoomDatabase() {
 
@@ -53,6 +59,9 @@ abstract class Of1Database : RoomDatabase() {
     abstract fun carDataDao(): CarDataDao
     abstract fun pitStopDao(): PitStopDao
     abstract fun teamRadioDao(): TeamRadioDao
+    abstract fun intervalDao(): IntervalDao
+    abstract fun raceControlDao(): RaceControlDao
+
 
     companion object {
         @Volatile

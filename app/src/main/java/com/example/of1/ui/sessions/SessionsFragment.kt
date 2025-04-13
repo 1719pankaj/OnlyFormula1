@@ -92,9 +92,10 @@ class SessionsFragment : Fragment() {
 
             // Navigate to PositionsFragment
             val action = SessionsFragmentDirections.actionSessionsFragmentToPositionsFragment(
-                meetingKey = meetingKey, // Use the stored/retrieved meetingKey
+                meetingKey = meetingKey,
                 sessionKey = session.sessionKey,
-                isLive = isLive
+                isLive = isLive,
+                sessionType = session.sessionType ?: "Unknown" // Pass session type, provide fallback
             )
             findNavController().navigate(action)
         }
