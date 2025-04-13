@@ -3,7 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/nav_graph"
-    app:startDestination="@id/splashFrag">
+    app:startDestination="@id/splashFrag"> <!-- Changed start destination -->
 
     <fragment
         android:id="@+id/splashFrag"
@@ -22,11 +22,14 @@
         android:name="com.example.of1.ui.main.MainFragment"
         android:label="fragment_main"
         tools:layout="@layout/fragment_main" >
+        <!-- REMOVED: Automatic navigation to year selection -->
+        <!-- ADDED: Action to Positions Fragment -->
         <action
-            android:id="@+id/action_mainFrag_to_seasonsFragment"
-            app:destination="@id/seasonsFragment"
-            app:popUpTo="@id/mainFrag"
-            app:popUpToInclusive="true" />
+            android:id="@+id/action_mainFragment_to_positionsFragment"
+            app:destination="@id/positionsFragment" />
+        <action
+            android:id="@+id/action_mainFragment_to_yearSelectionFragment"
+            app:destination="@id/yearSelectionFragment" />
     </fragment>
     <fragment
         android:id="@+id/meetingsFragment"
@@ -34,11 +37,12 @@
         android:label="fragment_meetings"
         tools:layout="@layout/fragment_meetings" />
     <fragment
-        android:id="@+id/seasonsFragment"
-        android:name="com.example.of1.ui.seasons.SeasonsFragment"
-        android:label="SeasonsFragment" >
+        android:id="@+id/yearSelectionFragment"
+        android:name="com.example.of1.ui.yearselection.YearSelectionFragment"
+        android:label="YearSelectionFragment"
+        tools:layout="@layout/fragment_year_selection">
         <action
-            android:id="@+id/action_seasonsFragment_to_racesFragment"
+            android:id="@+id/action_yearSelectionFragment_to_racesFragment"
             app:destination="@id/racesFragment" />
     </fragment>
     <fragment

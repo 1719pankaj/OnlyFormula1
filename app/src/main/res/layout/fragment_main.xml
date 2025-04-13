@@ -7,14 +7,54 @@
     tools:context=".ui.main.MainFragment">
 
     <TextView
+        android:id="@+id/tv_current_season_title"
+        style="?attr/textAppearanceHeadlineSmall"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="16dp"
+        android:layout_marginEnd="16dp"
+        app:layout_constraintEnd_toStartOf="@+id/btn_all_seasons"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:text="Current Season: 2024" />
+
+    <ImageButton
+        android:id="@+id/btn_all_seasons"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="MAIN FRAGMENT"
-        android:textSize="24sp"
-        android:textStyle="bold"
+        android:layout_marginEnd="16dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="View All Seasons"
+        android:src="@drawable/ic_calendar_view_month"
+        app:layout_constraintBottom_toBottomOf="@+id/tv_current_season_title"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="@+id/tv_current_season_title"
+        app:tint="?attr/colorPrimary" />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recycler_view_races"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_marginTop="8dp"
+        android:clipToPadding="false"
+        android:paddingBottom="8dp"
+        app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintTop_toBottomOf="@+id/tv_current_season_title"
+        tools:listitem="@layout/item_race_main" />
+
+    <ProgressBar
+        android:id="@+id/progress_bar_main"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/tv_current_season_title"
+        tools:visibility="visible" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

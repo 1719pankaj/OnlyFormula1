@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/card_root"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginStart="12dp"
+    android:layout_marginTop="6dp"
+    android:layout_marginEnd="12dp"
+    android:layout_marginBottom="6dp"
+    app:cardBackgroundColor="@color/white"
+    app:cardElevation="3dp">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/clickable_area"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="?attr/selectableItemBackground">
+
+        <!-- Status Indicator Bar -->
+        <View
+            android:id="@+id/status_indicator_bar"
+            android:layout_width="15dp"
+            android:layout_height="0dp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            tools:background="@color/race_status_indicator_live_or_next" />
+
+        <!-- Always Visible Content (Add Start Margin) -->
+        <TextView
+            android:id="@+id/tv_round"
+            style="?attr/textAppearanceLabelMedium"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:layout_marginTop="12dp"
+            app:layout_constraintStart_toEndOf="@id/status_indicator_bar"
+            app:layout_constraintTop_toTopOf="parent"
+            tools:text="Round 1" />
+
+        <TextView
+            android:id="@+id/tv_date"
+            style="?attr/textAppearanceLabelMedium"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="16dp"
+            app:layout_constraintBaseline_toBaselineOf="@id/tv_round"
+            app:layout_constraintEnd_toStartOf="@+id/iv_expand_icon"
+            tools:text="2024-03-02" />
+
+        <TextView
+            android:id="@+id/tv_race_name_main"
+            style="?attr/textAppearanceTitleMedium"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:layout_marginEnd="8dp"
+            app:layout_constraintEnd_toStartOf="@+id/iv_expand_icon"
+            app:layout_constraintStart_toStartOf="@id/tv_round"
+            app:layout_constraintTop_toBottomOf="@id/tv_round"
+            tools:text="Bahrain Grand Prix" />
+
+        <TextView
+            android:id="@+id/tv_circuit_name_main"
+            style="?attr/textAppearanceBodySmall"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:layout_marginBottom="12dp"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            app:layout_constraintBottom_toTopOf="@id/layout_session_details"
+            app:layout_constraintEnd_toEndOf="@id/tv_race_name_main"
+            app:layout_constraintStart_toStartOf="@id/tv_race_name_main"
+            app:layout_constraintTop_toBottomOf="@id/tv_race_name_main"
+            app:layout_constraintVertical_bias="0.0"
+            tools:text="Bahrain International Circuit, Bahrain" />
+
+        <ImageView
+            android:id="@+id/iv_expand_icon"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="16dp"
+            android:contentDescription="Expand or collapse sessions"
+            android:src="@drawable/ic_expand_more"
+            app:layout_constraintBottom_toBottomOf="@+id/tv_circuit_name_main"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="@+id/tv_date"
+            app:tint="?attr/colorControlNormal" />
+
+        <!-- Expandable Session Details Section -->
+        <LinearLayout
+            android:id="@+id/layout_session_details"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingTop="8dp"
+            android:paddingBottom="12dp"
+            android:visibility="gone"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toEndOf="@id/status_indicator_bar"
+            app:layout_constraintTop_toBottomOf="@id/tv_circuit_name_main"
+            tools:visibility="visible">
+
+            <!-- Example Placeholder (Remove) -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingTop="4dp"
+                android:paddingBottom="4dp"
+                android:layout_marginStart="16dp"
+                android:layout_marginEnd="16dp"
+                tools:text="Practice 1: 2024-02-29 11:30" />
+
+        </LinearLayout>
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+</com.google.android.material.card.MaterialCardView>
