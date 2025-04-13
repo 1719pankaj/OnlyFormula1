@@ -3,7 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/nav_graph"
-    app:startDestination="@id/splashFrag"> <!-- Changed start destination -->
+    app:startDestination="@id/splashFrag">
 
     <fragment
         android:id="@+id/splashFrag"
@@ -22,14 +22,16 @@
         android:name="com.example.of1.ui.main.MainFragment"
         android:label="fragment_main"
         tools:layout="@layout/fragment_main" >
-        <!-- REMOVED: Automatic navigation to year selection -->
-        <!-- ADDED: Action to Positions Fragment -->
         <action
             android:id="@+id/action_mainFragment_to_positionsFragment"
             app:destination="@id/positionsFragment" />
         <action
             android:id="@+id/action_mainFragment_to_yearSelectionFragment"
             app:destination="@id/yearSelectionFragment" />
+        <!-- Add Action to Sessions Fragment -->
+        <action
+            android:id="@+id/action_mainFragment_to_sessionsFragment"
+            app:destination="@id/sessionsFragment" />
     </fragment>
     <fragment
         android:id="@+id/meetingsFragment"
@@ -98,7 +100,6 @@
         <argument
             android:name="isLive"
             app:argType="boolean" />
-        <!-- ADD sessionType argument -->
         <argument
             android:name="sessionType"
             app:argType="string" />
@@ -143,11 +144,11 @@
         <argument
             android:name="startDate"
             app:argType="string"
-            app:nullable="true" />  <!-- Allow null -->
+            app:nullable="true" />
         <argument
             android:name="endDate"
             app:argType="string"
-            app:nullable="true" />    <!-- Allow null -->
+            app:nullable="true" />
         <argument
             android:name="isLive"
             app:argType="boolean" />

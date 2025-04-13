@@ -16,12 +16,19 @@ import java.text.SimpleDateFormat
 import java.util.*
 import javax.inject.Inject
 
-// Data class to hold navigation parameters
-data class NavigationEvent(
+// Event for navigating from main list item click
+data class MainNavigationEvent(
     val meetingKey: Int,
     val sessionKey: Int,
     val sessionType: String,
     val isLive: Boolean
+)
+
+// Event for navigating from the dialog
+data class DialogNavigationEvent(
+    val year: String,
+    val dateStart: String,
+    val dateEnd: String
 )
 
 // Sealed class to represent the state of the bridging process for a session
@@ -39,144 +46,149 @@ class MainViewModel @Inject constructor(
     private val sessionRepository: SessionRepository
 ) : ViewModel() {
 
-    // Internal StateFlow holding the Resource from the repository
-    private val _races = MutableStateFlow<Resource<List<Race>>>(Resource.Loading(true)) // Start explicitly loading
+    // --- State for Main Race List ---
+    private val _races = MutableStateFlow<Resource<List<Race>>>(Resource.Loading(true))
 
-    // --- StateFlows exposed to the UI ---
-
-    // 1. StateFlow for the actual list data (only updates on Success)
     val displayedRaces: StateFlow<List<Race>> = _races
-        .filterIsInstance<Resource.Success<List<Race>>>() // Only react to Success
-        .map { successResource ->
-            successResource.data ?: emptyList()
-        }
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = emptyList() // Start with an empty list
-        )
+        .filterIsInstance<Resource.Success<List<Race>>>()
+        .map { successResource -> successResource.data ?: emptyList() } // Keep chronological order
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    // 2. StateFlow for the loading state
     val isLoading: StateFlow<Boolean> = _races
-        .map { it is Resource.Loading && it.isLoading } // Map Resource state to boolean
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = true // Initially loading
-        )
+        .map { it is Resource.Loading && it.isLoading }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
 
-    // 3. StateFlow for error messages
     val errorMessage: StateFlow<String?> = _races
-        .map { if (it is Resource.Error) it.message else null } // Extract message on Error
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = null // Initially no error
-        )
+        .map { if (it is Resource.Error) it.message else null }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
-    // For single navigation events
-    private val _navigationEvent = MutableSharedFlow<NavigationEvent>()
-    val navigationEvent: SharedFlow<NavigationEvent> = _navigationEvent.asSharedFlow()
+    private val _mainNavigationEvent = MutableSharedFlow<MainNavigationEvent>()
+    val mainNavigationEvent: SharedFlow<MainNavigationEvent> = _mainNavigationEvent.asSharedFlow()
 
-    // To track the state of bridging for each session click
     private val _bridgingState = MutableStateFlow<Map<String, BridgingState>>(emptyMap())
     val bridgingState: StateFlow<Map<String, BridgingState>> = _bridgingState.asStateFlow()
 
     private var currentYear: String = ""
 
+    // --- State for Dialog ---
+    private val _yearsForDialog = MutableStateFlow<List<String>>(emptyList())
+    val yearsForDialog: StateFlow<List<String>> = _yearsForDialog.asStateFlow()
+
+    private val _dialogRaces = MutableStateFlow<Resource<List<Race>>>(Resource.Success(emptyList())) // Initial state not loading
+    val dialogRaces: StateFlow<Resource<List<Race>>> = _dialogRaces.asStateFlow()
+
+    private val _dialogNavigationEvent = MutableSharedFlow<DialogNavigationEvent>()
+    val dialogNavigationEvent: SharedFlow<DialogNavigationEvent> = _dialogNavigationEvent.asSharedFlow()
+
+
     init {
         val calendar = Calendar.getInstance()
         currentYear = calendar.get(Calendar.YEAR).toString()
+        generateYearsForDialog()
         fetchRacesForCurrentSeason()
+    }
+
+    private fun generateYearsForDialog() {
+        val current = Calendar.getInstance().get(Calendar.YEAR)
+        _yearsForDialog.value = (current downTo 1950).map { it.toString() }
     }
 
     fun fetchRacesForCurrentSeason() {
         viewModelScope.launch {
-            // Set initial loading state explicitly if needed (though _races starts as Loading)
-            // _races.value = Resource.Loading(true)
+            _races.value = Resource.Loading(true) // Ensure loading is set
             raceRepository.getRaces(currentYear)
                 .catch { e ->
-                    Log.e("MainViewModel", "Error fetching races flow", e)
-                    // Ensure error state is emitted
+                    Log.e("MainViewModel", "Error fetching current season races", e)
                     _races.value = Resource.Error("Failed to fetch races: ${e.localizedMessage}")
                 }
+                .collect { resource -> _races.value = resource }
+        }
+    }
+
+    // --- Function for Dialog Race Fetching ---
+    fun fetchRacesForYearDialog(year: String) {
+        viewModelScope.launch {
+            // Use the specific StateFlow for the dialog
+            raceRepository.getRaces(year)
+                .onStart { _dialogRaces.value = Resource.Loading(true) }
+                .catch { e ->
+                    Log.e("MainViewModel", "Error fetching dialog races for $year", e)
+                    _dialogRaces.value = Resource.Error("Failed to fetch races: ${e.localizedMessage}")
+                }
                 .collect { resource ->
-                    // Simply assign the collected resource to the internal StateFlow
-                    _races.value = resource
+                    // Emit success/error to the dialog state flow
+                    _dialogRaces.value = if (resource is Resource.Success) {
+                        Resource.Success(resource.data ?: emptyList())
+                    } else {
+                        resource // Pass Loading or Error through
+                    }
                 }
         }
     }
 
-    // --- Bridging Logic (findSessionAndPrepareNavigation, helpers) remains the same ---
+    // --- Function for preparing Dialog Navigation ---
+    fun prepareDialogNavigation(race: Race) {
+        viewModelScope.launch {
+            val (startDate, endDate) = calculateDateRange(race)
+            if (startDate != null && endDate != null) {
+                _dialogNavigationEvent.emit(
+                    DialogNavigationEvent(
+                        year = race.season,
+                        dateStart = startDate,
+                        dateEnd = endDate
+                    )
+                )
+            } else {
+                // Handle error - maybe emit an error event? For now, just log.
+                Log.e("MainViewModel", "Could not calculate date range for dialog navigation for ${race.raceName}")
+                // Optionally, update a dialog error state here
+            }
+        }
+    }
+
+
+    // --- Bridging Logic for Main List Item Click ---
     fun findSessionAndPrepareNavigation(race: Race, sessionName: String, sessionDate: String, sessionTime: String?) {
         val bridgingKey = "${race.round}_${sessionName}"
-        Log.d("MainViewModel", "Attempting bridging for key: $bridgingKey")
+        Log.d("MainViewModel", "Attempting main list bridging for key: $bridgingKey")
+        _bridgingState.update { currentMap -> currentMap.toMutableMap().apply { this[bridgingKey] = BridgingState.Loading } }
 
-        // --- 1. Set Bridging State to Loading ---
-        _bridgingState.update { currentMap ->
-            currentMap.toMutableMap().apply { this[bridgingKey] = BridgingState.Loading }
-        }
-
-        // --- 2. Calculate Date Range ---
         val (startDateString, endDateString) = calculateDateRange(race)
         if (startDateString == null || endDateString == null) {
-            Log.e("MainViewModel", "Could not calculate date range for race round ${race.round}")
-            _bridgingState.update { currentMap ->
-                currentMap.toMutableMap().apply { this[bridgingKey] = BridgingState.Error("Date calculation error") }
-            }
+            Log.e("MainViewModel", "Could not calculate date range for main list bridging, round ${race.round}")
+            _bridgingState.update { currentMap -> currentMap.toMutableMap().apply { this[bridgingKey] = BridgingState.Error("Date error") } }
             return
         }
-        Log.d("MainViewModel", "Date range for OpenF1 lookup: $startDateString to $endDateString")
 
-        // --- 3. Fetch Sessions from OpenF1 Repository ---
         viewModelScope.launch {
             sessionRepository.getSessionsByDate(race.season.toInt(), startDateString, endDateString)
                 .collect { sessionResource ->
                     when (sessionResource) {
                         is Resource.Success -> {
                             val openF1Sessions = sessionResource.data ?: emptyList()
-                            Log.d("MainViewModel", "Received ${openF1Sessions.size} OpenF1 sessions for the date range.")
-                            // --- 4. Filter and Find Matching Session ---
                             val targetSession = findMatchingOpenF1Session(openF1Sessions, sessionName, sessionDate, sessionTime)
-
                             if (targetSession != null) {
-                                Log.i("MainViewModel", "Bridge successful! Found OpenF1 session: Key=${targetSession.sessionKey}, Name=${targetSession.sessionName}")
-                                // --- 5. Determine Liveness ---
                                 val isLive = isSessionLive(targetSession.dateStart, targetSession.dateEnd)
-                                Log.d("MainViewModel", "Session Liveness: $isLive")
-
-                                // --- 6. Emit Navigation Event ---
-                                _navigationEvent.emit(
-                                    NavigationEvent(
+                                _mainNavigationEvent.emit( // Emit to the correct flow
+                                    MainNavigationEvent(
                                         meetingKey = targetSession.meetingKey,
                                         sessionKey = targetSession.sessionKey,
-                                        // Use the *OpenF1* sessionName as the sessionType for PositionsFragment
                                         sessionType = targetSession.sessionName,
                                         isLive = isLive
                                     )
                                 )
-                                // Update state to success (optional, navigation event might suffice)
-                                _bridgingState.update { currentMap ->
-                                    currentMap.toMutableMap().apply { this[bridgingKey] = BridgingState.Success }
-                                }
+                                _bridgingState.update { currentMap -> currentMap.toMutableMap().apply { this[bridgingKey] = BridgingState.Success } }
                             } else {
-                                Log.w("MainViewModel", "Bridge failed: Could not find matching OpenF1 session for '$sessionName' on $sessionDate.")
-                                // --- 4b. No Match Found ---
-                                _bridgingState.update { currentMap ->
-                                    currentMap.toMutableMap().apply { this[bridgingKey] = BridgingState.Error("Session not found in OpenF1 data") }
-                                }
+                                Log.w("MainViewModel", "Bridge failed (main list): No matching OpenF1 session for '$sessionName' on $sessionDate.")
+                                _bridgingState.update { currentMap -> currentMap.toMutableMap().apply { this[bridgingKey] = BridgingState.Error("Session not found") } }
                             }
                         }
                         is Resource.Error -> {
-                            Log.e("MainViewModel", "Bridge failed: Error fetching OpenF1 sessions: ${sessionResource.message}")
-                            // --- 3b. OpenF1 Fetch Error ---
-                            _bridgingState.update { currentMap ->
-                                currentMap.toMutableMap().apply { this[bridgingKey] = BridgingState.Error(sessionResource.message ?: "API Error") }
-                            }
+                            Log.e("MainViewModel", "Bridge failed (main list): Error fetching OpenF1 sessions: ${sessionResource.message}")
+                            _bridgingState.update { currentMap -> currentMap.toMutableMap().apply { this[bridgingKey] = BridgingState.Error(sessionResource.message ?: "API Error") } }
                         }
                         is Resource.Loading -> {
-                            // State is already Loading, no action needed here unless refining intermediate states
-                            Log.d("MainViewModel", "Bridge in progress: Still loading OpenF1 sessions...")
+                            Log.d("MainViewModel", "Bridge in progress (main list): Loading OpenF1 sessions...")
                         }
                     }
                 }
@@ -318,7 +330,6 @@ class MainViewModel @Inject constructor(
         dateFormat.timeZone = TimeZone.getTimeZone("UTC") // OpenF1 uses UTC
 
         try {
-            // Handle potential milliseconds and timezone offset variations from OpenF1
             val startCleaned = startDateStr.replace(".\\d+".toRegex(), "").replace("+00:00", "")
             val endCleaned = endDateStr.replace(".\\d+".toRegex(), "").replace("+00:00", "")
 
