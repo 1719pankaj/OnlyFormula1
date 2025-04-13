@@ -23,10 +23,15 @@
         android:label="fragment_main"
         tools:layout="@layout/fragment_main" >
         <action
-            android:id="@+id/action_mainFrag_to_seasonsFragment"
-            app:destination="@id/seasonsFragment"
-            app:popUpTo="@id/mainFrag"
-            app:popUpToInclusive="true" />
+            android:id="@+id/action_mainFragment_to_positionsFragment"
+            app:destination="@id/positionsFragment" />
+        <action
+            android:id="@+id/action_mainFragment_to_yearSelectionFragment"
+            app:destination="@id/yearSelectionFragment" />
+        <!-- Add Action to Sessions Fragment -->
+        <action
+            android:id="@+id/action_mainFragment_to_sessionsFragment"
+            app:destination="@id/sessionsFragment" />
     </fragment>
     <fragment
         android:id="@+id/meetingsFragment"
@@ -34,11 +39,12 @@
         android:label="fragment_meetings"
         tools:layout="@layout/fragment_meetings" />
     <fragment
-        android:id="@+id/seasonsFragment"
-        android:name="com.example.of1.ui.seasons.SeasonsFragment"
-        android:label="SeasonsFragment" >
+        android:id="@+id/yearSelectionFragment"
+        android:name="com.example.of1.ui.yearselection.YearSelectionFragment"
+        android:label="YearSelectionFragment"
+        tools:layout="@layout/fragment_year_selection">
         <action
-            android:id="@+id/action_seasonsFragment_to_racesFragment"
+            android:id="@+id/action_yearSelectionFragment_to_racesFragment"
             app:destination="@id/racesFragment" />
     </fragment>
     <fragment
@@ -94,7 +100,6 @@
         <argument
             android:name="isLive"
             app:argType="boolean" />
-        <!-- ADD sessionType argument -->
         <argument
             android:name="sessionType"
             app:argType="string" />
@@ -139,11 +144,11 @@
         <argument
             android:name="startDate"
             app:argType="string"
-            app:nullable="true" />  <!-- Allow null -->
+            app:nullable="true" />
         <argument
             android:name="endDate"
             app:argType="string"
-            app:nullable="true" />    <!-- Allow null -->
+            app:nullable="true" />
         <argument
             android:name="isLive"
             app:argType="boolean" />

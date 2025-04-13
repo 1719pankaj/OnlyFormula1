@@ -27,7 +27,6 @@ import com.example.of1.data.repository.PositionRepository
 import com.example.of1.data.repository.RaceControlRepository
 import com.example.of1.data.repository.RaceRepository
 import com.example.of1.data.repository.ResultRepository
-import com.example.of1.data.repository.SeasonRepository
 import com.example.of1.data.repository.SessionRepository
 import com.example.of1.data.repository.TeamRadioRepository
 import com.example.of1.utils.LimitedBodyLoggingInterceptor
@@ -123,17 +122,7 @@ object AppModule {
     fun provideMeetingRepository(apiService: OpenF1ApiService, meetingDao: MeetingDao): MeetingRepository { // Add provideMeetingRepository
         return MeetingRepository(apiService, meetingDao)
     }
-    @Provides
-    @Singleton
-    fun provideSeasonDao(database: Of1Database): SeasonDao {
-        return database.seasonDao()
-    }
 
-    @Provides
-    @Singleton
-    fun provideSeasonRepository(apiService: JolpicaApiService, seasonDao: SeasonDao): SeasonRepository {
-        return SeasonRepository(apiService, seasonDao)
-    }
     @Provides
     @Singleton
     fun provideRaceDao(database: Of1Database): RaceDao{

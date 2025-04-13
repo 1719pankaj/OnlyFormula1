@@ -14,7 +14,7 @@ import com.example.of1.data.local.dao.PositionDao
 import com.example.of1.data.local.dao.RaceControlDao
 import com.example.of1.data.local.dao.RaceDao
 import com.example.of1.data.local.dao.ResultDao
-import com.example.of1.data.local.dao.SeasonDao
+// REMOVED: import com.example.of1.data.local.dao.SeasonDao // Remove import
 import com.example.of1.data.local.dao.SessionDao
 import com.example.of1.data.local.entity.CarDataEntity
 import com.example.of1.data.local.entity.DriverEntity
@@ -24,7 +24,7 @@ import com.example.of1.data.local.entity.PitStopEntity
 import com.example.of1.data.local.entity.PositionEntity
 import com.example.of1.data.local.entity.RaceEntity
 import com.example.of1.data.local.entity.ResultEntity
-import com.example.of1.data.local.entity.SeasonEntity
+// REMOVED: import com.example.of1.data.local.entity.SeasonEntity // Remove import
 import com.example.of1.data.local.entity.SessionEntity
 import com.example.of1.data.local.dao.TeamRadioDao
 import com.example.of1.data.local.entity.IntervalEntity
@@ -34,7 +34,7 @@ import com.example.of1.data.local.entity.TeamRadioEntity
 @Database(entities = [
     SessionEntity::class,
     MeetingEntity::class,
-    SeasonEntity::class,
+    // REMOVED: SeasonEntity::class, // Remove SeasonEntity
     RaceEntity::class,
     ResultEntity::class,
     DriverEntity::class,
@@ -44,15 +44,14 @@ import com.example.of1.data.local.entity.TeamRadioEntity
     PitStopEntity::class,
     TeamRadioEntity::class,
     IntervalEntity::class,
-    RaceControlEntity::class], version = 7, exportSchema = false) // Add entities, update version
-
+    RaceControlEntity::class], version = 8, exportSchema = false) // Increment version number
 abstract class Of1Database : RoomDatabase() {
 
     abstract fun sessionDao(): SessionDao
-    abstract fun meetingDao(): MeetingDao // Keep this for now, even though it's unused
-    abstract fun seasonDao(): SeasonDao
+    abstract fun meetingDao(): MeetingDao
+    // REMOVED: abstract fun seasonDao(): SeasonDao // Remove seasonDao function
     abstract fun raceDao(): RaceDao
-    abstract fun resultDao(): ResultDao // Add resultDao
+    abstract fun resultDao(): ResultDao
     abstract fun driverDao(): DriverDao
     abstract fun positionDao(): PositionDao
     abstract fun lapDao(): LapDao
@@ -61,7 +60,6 @@ abstract class Of1Database : RoomDatabase() {
     abstract fun teamRadioDao(): TeamRadioDao
     abstract fun intervalDao(): IntervalDao
     abstract fun raceControlDao(): RaceControlDao
-
 
     companion object {
         @Volatile

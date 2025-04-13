@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="50dp"
+    android:background="?attr/selectableItemBackground"
+    android:paddingTop="6dp"
+    android:paddingBottom="6dp"
+    android:paddingStart="16dp"
+    android:paddingEnd="16dp">
+
+    <!-- Green Live Dot Indicator -->
+    <ImageView
+        android:id="@+id/iv_live_session_dot"
+        android:layout_width="8dp"
+        android:layout_height="8dp"
+        android:src="@drawable/ic_live_dot"
+        android:layout_marginHorizontal="6dp"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:visibility="visible" />
+
+    <!-- Session Type Icon -->
+    <ImageView
+        android:id="@+id/iv_session_icon"
+        android:layout_width="18dp"
+        android:layout_height="18dp"
+        android:layout_marginHorizontal="6dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:tint="?attr/colorControlNormal"
+        tools:src="@drawable/ic_practice" />
+
+    <TextView
+        android:id="@+id/tv_session_name_detail"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        tools:text="Practice 1: Feb 29, 11:30"
+        style="?attr/textAppearanceBodyMedium"
+        android:layout_marginHorizontal="6dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/iv_live_session_dot"
+        app:layout_constraintStart_toEndOf="@+id/iv_session_icon"
+        app:layout_constraintTop_toTopOf="parent" />
+
+
+
+</androidx.constraintlayout.widget.ConstraintLayout>
