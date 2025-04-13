@@ -1,125 +1,160 @@
 package com.example.of1.data.repository
 
 import android.util.Log
+import com.example.of1.data.local.dao.IntervalDao
+import com.example.of1.data.local.entity.IntervalEntity
 import com.example.of1.data.model.openf1.OpenF1IntervalResponse
 import com.example.of1.data.remote.OpenF1ApiService
 import com.example.of1.utils.Resource
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import retrofit2.HttpException
 import java.io.IOException
-import java.text.SimpleDateFormat
-import java.util.*
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class IntervalRepository @Inject constructor(
-    private val apiService: OpenF1ApiService
+    private val apiService: OpenF1ApiService,
+    private val intervalDao: IntervalDao // Inject DAO
 ) {
-    private var latestTimestampPerSession = mutableMapOf<Int, String?>()
+    // No longer need latestTimestampPerSession map, DAO handles it
 
-    // MODIFIED: Added isLive parameter
+    // Fetches intervals, implementing cache-first strategy
     fun getLatestIntervals(sessionKey: Int, isLive: Boolean): Flow<Resource<Map<Int, OpenF1IntervalResponse>>> = flow {
-        emit(Resource.Loading())
-        Log.d("IntervalRepository", "Fetching latest intervals for session $sessionKey (isLive: $isLive)")
+        emit(Resource.Loading(true))
+        Log.d("IntervalRepository", "getLatestIntervals called for session $sessionKey (isLive: $isLive)")
 
-        val timestampForQuery = if (isLive) {
-            // For live sessions, use the polling timestamp logic
-            getTimestampForQuery(sessionKey)
-        } else {
-            // For historical sessions, fetch everything
-            null
+        // 1. Emit Cached Data First (always try)
+        var emittedCachedData = false
+        try {
+            // Get all cached intervals and process to find latest per driver
+            val cachedEntities = intervalDao.getAllIntervalsForSession(sessionKey).first()
+            if (cachedEntities.isNotEmpty()) {
+                val latestCachedMap = processToLatestMap(cachedEntities)
+                Log.d("IntervalRepository", "Emitting ${latestCachedMap.size} latest intervals from cache.")
+                emit(Resource.Success(latestCachedMap))
+                emittedCachedData = true
+            } else {
+                Log.d("IntervalRepository", "No cached intervals found for session $sessionKey.")
+            }
+        } catch (e: Exception) {
+            Log.e("IntervalRepository", "Error fetching cached intervals", e)
+            // Continue to network fetch
         }
 
-        Log.d("IntervalRepository", "Querying API with sessionKey=$sessionKey, date > $timestampForQuery")
-
+        // 2. Fetch from Network
+        var timestampForQuery: String? = null
         try {
-            // Make the API call using the determined timestamp (null for historical)
+            // Determine timestamp ONLY if live AND cache was successfully emitted or empty
+            timestampForQuery = if (isLive) {
+                intervalDao.getLatestTimestamp(sessionKey) // Use DAO for latest timestamp
+            } else {
+                null // Fetch all for historical
+            }
+            Log.d("IntervalRepository", "Fetching from API with sessionKey=$sessionKey, date > $timestampForQuery (isLive=$isLive)")
+
             val response = apiService.getIntervals(sessionKey, timestampForQuery)
 
             if (response.isSuccessful) {
-                val intervals = response.body() ?: emptyList()
-                Log.d("IntervalRepository", "API call successful: ${intervals.size} interval entries received")
+                val newApiIntervals = response.body() ?: emptyList()
+                Log.d("IntervalRepository", "API call successful: ${newApiIntervals.size} new interval entries received")
 
-                if (intervals.isNotEmpty()) {
-                    // If it's a live session, update the latest timestamp for the next poll
-                    if (isLive) {
-                        val batchLatestTimestamp = intervals.maxByOrNull { it.date }?.date
-                        updateLatestTimestamp(sessionKey, batchLatestTimestamp)
+                if (newApiIntervals.isNotEmpty()) {
+                    val intervalEntities = newApiIntervals.map { mapApiToEntity(it) }
+                    // For historical, clear old before insert? Optional, REPLACE handles updates.
+                    // If you expect massive overlap and want efficiency:
+                    if (!isLive && timestampForQuery == null) {
+                        Log.d("IntervalRepository", "Historical fetch: Deleting old intervals for session $sessionKey before insert.")
+                        intervalDao.deleteIntervalsBySession(sessionKey)
                     }
+                    intervalDao.insertIntervals(intervalEntities)
+                    Log.d("IntervalRepository", "Inserted/Updated intervals in database")
 
-                    // Process to get only the latest entry per driver (applies to both live poll results and full historical data)
-                    val latestIntervalsMap = intervals
-                        .groupBy { it.driverNumber }
-                        .mapValues { entry ->
-                            entry.value.maxByOrNull { it.date }!! // Find the most recent entry for this driver
-                        }
+                    // Query DB again to get the complete, updated list and process
+                    val allIntervals = intervalDao.getAllIntervalsForSession(sessionKey).first()
+                    val latestCombinedMap = processToLatestMap(allIntervals)
+                    emit(Resource.Success(latestCombinedMap))
+                    Log.d("IntervalRepository", "Emitted Success from combined API/DB interval data")
 
-                    Log.d("IntervalRepository", "Processed latest intervals for ${latestIntervalsMap.size} drivers")
-                    emit(Resource.Success(latestIntervalsMap))
                 } else {
-                    // No data received (either nothing new in poll, or historical session had no data)
-                    Log.d("IntervalRepository", "No interval data received for this query.")
-                    emit(Resource.Success(emptyMap())) // Emit empty success
+                    Log.d("IntervalRepository", "API returned no new intervals.")
+                    // If API returned nothing new, the cached data (if any) is the latest success state.
+                    if (!emittedCachedData) {
+                        emit(Resource.Success(emptyMap())) // Ensure empty success if cache was empty too
+                    }
                 }
             } else {
+                // API call failed
                 val errorBody = response.errorBody()?.string()
                 Log.e("IntervalRepository", "API call failed: ${response.code()}, errorBody: $errorBody")
-                emit(Resource.Error("Error fetching intervals: ${response.code()} - $errorBody"))
+                if (!emittedCachedData) { // Emit error only if cache wasn't shown
+                    emit(Resource.Error("Error fetching intervals: ${response.code()} - $errorBody"))
+                } else {
+                    Log.w("IntervalRepository", "API failed, but cached interval data was shown.")
+                }
             }
+
         } catch (e: IOException) {
             Log.e("IntervalRepository", "Network error", e)
-            emit(Resource.Error("Network error fetching intervals: ${e.localizedMessage ?: "Check connection"}"))
+            if (!emittedCachedData) emit(Resource.Error("Network error fetching intervals: ${e.localizedMessage ?: "Check connection"}"))
+            else Log.w("IntervalRepository", "Network error on interval fetch, but cached data was shown.")
         } catch (e: HttpException) {
             Log.e("IntervalRepository", "HTTP error", e)
-            emit(Resource.Error("HTTP error fetching intervals: ${e.localizedMessage ?: "Unexpected error"}"))
+            if (!emittedCachedData) emit(Resource.Error("HTTP error fetching intervals: ${e.localizedMessage ?: "Unexpected error"}"))
+            else Log.w("IntervalRepository", "HTTP error on interval fetch, but cached data was shown.")
+        } catch (e: Exception) {
+            Log.e("IntervalRepository", "Unexpected error during interval fetch", e)
+            if (!emittedCachedData) emit(Resource.Error("Unexpected error fetching intervals: ${e.localizedMessage ?: "Unknown error"}"))
+            else Log.w("IntervalRepository", "Unexpected error on interval fetch, but cached data was shown.")
+        } finally {
+            emit(Resource.Loading(false)) // Ensure loading stops
+            Log.d("IntervalRepository", "Interval fetch process complete for session $sessionKey.")
         }
-        // No finally block needed here
-    }.catch { e ->
-        Log.e("IntervalRepository", "Flow error", e)
-        emit(Resource.Error("Unexpected error fetching intervals: ${e.localizedMessage ?: "Unknown error"}"))
     }
 
-    // --- Helper functions remain the same ---
-
-    // Determines the correct timestamp for LIVE polling queries.
-    private fun getTimestampForQuery(sessionKey: Int): String? {
-        val storedTimestamp = latestTimestampPerSession[sessionKey]
-        if (storedTimestamp != null) {
-            return storedTimestamp
-        } else {
-            // Initial fetch for LIVE session: Get data from the last 15 seconds
-            return try {
-                val calendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"))
-                calendar.add(Calendar.SECOND, -15)
-                // Using ISO 8601 format expected by the API for date comparisons
-                val dateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSXXX", Locale.US)
-                dateFormat.timeZone = TimeZone.getTimeZone("UTC")
-                val initialTimestamp = dateFormat.format(calendar.time)
-                Log.d("IntervalRepository", "Initial LIVE fetch for session $sessionKey, using timestamp: $initialTimestamp")
-                initialTimestamp
-            } catch (e: Exception) {
-                Log.e("IntervalRepository", "Error generating initial timestamp", e)
-                null // Fallback if date generation fails
+    // Helper to process a list of entities into a map of latest interval per driver
+    private fun processToLatestMap(entities: List<IntervalEntity>): Map<Int, OpenF1IntervalResponse> {
+        return entities
+            .groupBy { it.driverNumber }
+            .mapValues { entry ->
+                // Find the latest entity for this driver
+                val latestEntity = entry.value.maxByOrNull { it.date }!!
+                // Map the latest entity back to the API response model for the ViewModel/UI
+                mapEntityToApiModel(latestEntity)
             }
-        }
     }
 
-    // Updates the latest known timestamp for LIVE polling.
-    private fun updateLatestTimestamp(sessionKey: Int, newTimestamp: String?) {
-        if (newTimestamp != null) {
-            val currentTimestamp = latestTimestampPerSession[sessionKey]
-            if (currentTimestamp == null || newTimestamp > currentTimestamp) {
-                latestTimestampPerSession[sessionKey] = newTimestamp
-                Log.d("IntervalRepository", "Updated latest timestamp for session $sessionKey to: $newTimestamp")
-            }
-        }
+    // Helper to map API response to Entity
+    private fun mapApiToEntity(api: OpenF1IntervalResponse): IntervalEntity {
+        return IntervalEntity(
+            date = api.date,
+            driverNumber = api.driverNumber,
+            sessionKey = api.sessionKey,
+            meetingKey = api.meetingKey,
+            gapToLeader = api.gapToLeader,
+            interval = api.interval
+        )
     }
 
-    fun clearTimestampCache() {
-        latestTimestampPerSession.clear()
-        Log.d("IntervalRepository", "Cleared timestamp cache")
+    // Helper to map Entity to API model (or a dedicated UI model if preferred)
+    private fun mapEntityToApiModel(entity: IntervalEntity): OpenF1IntervalResponse {
+        return OpenF1IntervalResponse(
+            date = entity.date,
+            driverNumber = entity.driverNumber,
+            sessionKey = entity.sessionKey,
+            meetingKey = entity.meetingKey,
+            gapToLeader = entity.gapToLeader,
+            interval = entity.interval
+        )
+    }
+
+    // Cache clearing is now less critical as data is persisted, but can be kept if needed
+    // for manual refresh scenarios.
+    fun clearTimestampCache(sessionKey: Int? = null) {
+        // This concept is handled by the DAO/database now.
+        Log.d("IntervalRepository", "Timestamp cache is managed by DAO.")
     }
 }

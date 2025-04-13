@@ -30,74 +30,94 @@ class LapsViewModel @Inject constructor(
     private val _pitStops = MutableStateFlow<Resource<List<PitStop>>>(Resource.Loading())
     val pitStops: StateFlow<Resource<List<PitStop>>> = _pitStops
 
-    // Flow for ALL radio messages in the session (fetched once)
     private val _teamRadioRaw = MutableStateFlow<Resource<List<TeamRadio>>>(Resource.Loading())
-    // No need to expose _teamRadioRaw publicly
 
-    // Polling jobs
     private var lapsPollingJob: kotlinx.coroutines.Job? = null
     private var pitStopsPollingJob: kotlinx.coroutines.Job? = null
     private var teamRadioPollingJob: kotlinx.coroutines.Job? = null
 
-    // Properties to store context
     private var isLive = false
     private var currentSessionKey: Int = -1
     private var currentDriverNumber: Int = -1
 
-    fun getLaps(sessionKey: Int, driverNumber: Int, isLive: Boolean) {
+    // RENAME function to initializeData for consistency
+    fun initializeData(sessionKey: Int, driverNumber: Int, isLive: Boolean) {
+        // Prevent re-initialization if same session/driver and already loading/loaded
+        if (this.currentSessionKey == sessionKey && this.currentDriverNumber == driverNumber && _laps.value !is Resource.Loading) {
+            Log.d("LapsViewModel", "Data for session $sessionKey, driver $driverNumber already loaded.")
+            // Update live status if changed
+            if (this.isLive != isLive) {
+                this.isLive = isLive
+                stopPolling()
+                if (isLive) startPolling()
+            }
+            return
+        }
+        Log.d("LapsViewModel", "Initializing for session $sessionKey, driver $driverNumber, isLive: $isLive")
+
         this.isLive = isLive
         this.currentSessionKey = sessionKey
         this.currentDriverNumber = driverNumber
 
+        // Reset state
+        stopPolling()
+        _laps.value = Resource.Loading()
+        _pitStops.value = Resource.Loading()
+        _teamRadioRaw.value = Resource.Loading()
+
         // Initial fetches
         viewModelScope.launch {
-            lapRepository.getLaps(sessionKey, driverNumber)
-                .onEach { _laps.value = it }
-                .launchIn(viewModelScope) // Use viewModelScope
+            // Use the RENAMED function here
+            lapRepository.getLapsForDriver(sessionKey, driverNumber)
+                .collect { _laps.value = it } // Use collect instead of onEach/launchIn for clarity
         }
         viewModelScope.launch {
             pitStopRepository.getPitStops(sessionKey, driverNumber)
-                .onEach { _pitStops.value = it }
-                .launchIn(viewModelScope) // Use viewModelScope
+                .collect { _pitStops.value = it }
         }
-        // **FETCH TEAM RADIO HERE**
         viewModelScope.launch {
             teamRadioRepository.getTeamRadio(sessionKey) // Fetch for the whole session
-                .onEach { _teamRadioRaw.value = it }
-                .launchIn(viewModelScope) // Use viewModelScope
+                .collect { _teamRadioRaw.value = it }
+        }
+
+        // Start polling if live
+        if (isLive) {
+            startPolling()
         }
     }
 
-    // Separate startPolling function
     fun startPolling() {
         if (isLive && currentSessionKey != -1 && currentDriverNumber != -1) {
             Log.d("LapsViewModel", "Starting polling...")
-            lapsPollingJob?.cancel()
-            lapsPollingJob = viewModelScope.launch {
-                while (true) {
-                    delay(Constants.POLLING_RATE)
-                    lapRepository.getLaps(currentSessionKey, currentDriverNumber)
-                        .onEach { _laps.value = it }
-                        .launchIn(this) // Use the coroutine scope of startPolling
+            // Lap Polling
+            if (lapsPollingJob?.isActive != true) {
+                lapsPollingJob = viewModelScope.launch {
+                    while (true) {
+                        delay(Constants.POLLING_RATE)
+                        // Use the RENAMED function here
+                        lapRepository.getLapsForDriver(currentSessionKey, currentDriverNumber)
+                            .collect { _laps.value = it } // Collect directly in polling loop
+                    }
                 }
             }
-            pitStopsPollingJob?.cancel()
-            pitStopsPollingJob = viewModelScope.launch {
-                while (true) {
-                    delay(Constants.POLLING_RATE)
-                    pitStopRepository.getPitStops(currentSessionKey, currentDriverNumber)
-                        .onEach { _pitStops.value = it }
-                        .launchIn(this)
+            // PitStop Polling
+            if (pitStopsPollingJob?.isActive != true) {
+                pitStopsPollingJob = viewModelScope.launch {
+                    while (true) {
+                        delay(Constants.POLLING_RATE)
+                        pitStopRepository.getPitStops(currentSessionKey, currentDriverNumber)
+                            .collect { _pitStops.value = it }
+                    }
                 }
             }
-            // Poll Team Radio
-            teamRadioPollingJob?.cancel()
-            teamRadioPollingJob = viewModelScope.launch {
-                while (true) {
-                    delay(Constants.POLLING_RATE) // Or maybe a different rate?
-                    teamRadioRepository.getTeamRadio(currentSessionKey) // Poll for the whole session
-                        .onEach { _teamRadioRaw.value = it }
-                        .launchIn(this)
+            // Team Radio Polling
+            if (teamRadioPollingJob?.isActive != true) {
+                teamRadioPollingJob = viewModelScope.launch {
+                    while (true) {
+                        delay(Constants.POLLING_RATE)
+                        teamRadioRepository.getTeamRadio(currentSessionKey)
+                            .collect { _teamRadioRaw.value = it }
+                    }
                 }
             }
         } else {
@@ -117,7 +137,7 @@ class LapsViewModel @Inject constructor(
         stopPolling()
     }
 
-    // Add a local cache of the last valid data
+    // --- Team Radio Filtering Logic (Unchanged) ---
     private var lastValidTeamRadioList: List<TeamRadio> = emptyList()
 
     val teamRadioForDriverList: StateFlow<List<TeamRadio>> = _teamRadioRaw

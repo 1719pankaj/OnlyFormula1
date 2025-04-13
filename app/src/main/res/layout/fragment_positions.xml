@@ -6,20 +6,34 @@
     android:layout_height="match_parent"
     tools:context=".ui.positions.PositionsFragment">
 
+    <!-- Lap Status Display -->
+    <TextView
+        android:id="@+id/tv_lap_status"
+        style="?attr/textAppearanceTitleSmall"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:visibility="gone"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:text="Lap 55 / 58"
+        tools:visibility="visible" />
+
     <!-- RecyclerView for Race Control Messages -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/race_control_recycler_view"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:visibility="gone"
-        android:paddingBottom="8dp"
         android:clipToPadding="false"
+        android:paddingBottom="8dp"
+        android:visibility="gone"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/tv_lap_status"
+        tools:itemCount="2"
         tools:listitem="@layout/item_race_control"
-        tools:visibility="visible"
-        tools:itemCount="2"/>
+        tools:visibility="visible" />
 
     <!-- RecyclerView for Driver Positions -->
     <androidx.recyclerview.widget.RecyclerView
@@ -29,16 +43,17 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/race_control_recycler_view" /> <!-- Constrained below RC recycler -->
+        app:layout_constraintTop_toBottomOf="@+id/race_control_recycler_view" />
 
+    <!-- Progress Bar -->
     <ProgressBar
         android:id="@+id/progress_bar"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:visibility="gone"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/race_control_recycler_view"
-        android:visibility="gone"/>
+        app:layout_constraintTop_toBottomOf="@id/race_control_recycler_view" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

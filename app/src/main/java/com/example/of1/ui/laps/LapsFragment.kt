@@ -60,7 +60,7 @@ class LapsFragment : Fragment() {
         val driverNumber = args.driverNumber
         val isLive = args.isLive
 
-        viewModel.getLaps(sessionKey, driverNumber, isLive)
+        viewModel.initializeData(sessionKey, driverNumber, isLive)
 
 
         // Live Car Data Button
